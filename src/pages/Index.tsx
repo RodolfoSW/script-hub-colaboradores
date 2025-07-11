@@ -4,7 +4,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { 
   Search, 
   Headphones, 
@@ -13,7 +15,10 @@ import {
   Wifi, 
   Router, 
   Copy,
-  ExternalLink
+  ExternalLink,
+  Edit,
+  Save,
+  X
 } from "lucide-react";
 
 interface OnuModel {
@@ -32,6 +37,7 @@ interface Script {
   category: "support" | "financial" | "other";
   content: string;
   tags: string[];
+  detailsTooltip?: string;
 }
 
 const onuModels: OnuModel[] = [
@@ -88,19 +94,52 @@ const onuModels: OnuModel[] = [
 const scripts: Script[] = [
   {
     id: "1",
-    title: "Verificação de Sinal",
-    description: "Script para verificar qualidade do sinal GPON",
+    title: "Conexão lenta",
+    description: "Cliente reportou lentidão na conexão",
     category: "support",
-    content: "show interface gpon-onu_1/1/1:1",
-    tags: ["gpon", "sinal", "troubleshooting"]
+    content: `CLIENTE REPORTOU LENTIDÃO NA CONEXÃO.
+
+ONU ATIVA E OPERACIONAL.
+STATUS DE CONEXÃO: ESTABELECIDO.
+EXECUTADOS TESTES DE LATÊNCIA (PING).
+REINICIALIZAÇÃO DO EQUIPAMENTO (REBOOT) REALIZADA COM SUCESSO.
+NOVOS TESTES DE LATÊNCIA EFETUADOS APÓS REINICIALIZAÇÃO.
+CLIENTE CONFIRMA RESTABELECIMENTO DO ACESSO APÓS INTERVENÇÃO.`,
+    tags: ["lentidão", "conexão", "ping", "latência", "reboot"],
+    detailsTooltip: `Testes a serem realizados:
+• Ping ipv4 ipv6
+• TraceRouter
+• Verificar canais do wifi 2.4 e 5.8
+• Realizar Neighboring Ap
+• Verificar com o cliente aonde está instalado a ONU
+• Verificar se tem algum dispositivo Static em Home Network
+• Potência da ONU
+• Potência da OLT
+• Extrato de conexão`
   },
   {
     id: "2", 
-    title: "Reset de ONU",
-    description: "Procedimento para reset remoto da ONU",
+    title: "POTENCIA FORA DO PADRÃO",
+    description: "Verificação e correção de problemas de potência na ONU",
     category: "support", 
-    content: "onu reset gpon-onu_1/1/1:1",
-    tags: ["reset", "onu", "gpon"]
+    content: `VERIFICADO EM TESTES QUE O(A) RAIMUNDO GABRIEL FERREIRA DA SILVA
+TELL: (96) 99127-3053
+M SINAL BAIXO POTÊNCIA NA ONU FORA DO PADRÃO
+
+INFORMATIVO ENCAMINHADO VIA CHAT ATIVO
+--------------------------------------------------------------------------------------------------------------------
+
+POTÊNCIA NA ONU   -25.23 dBm    /  POTÊNCIA NA -30.0 
+REALIZAR A LEITURA DE POTÊNCIA NA PORTA DO CLIENTE NA CTO E NA PTO E TAMBÉM A LIMPEZA DOS CONECTORES E/OU SUBSTITUIÇÃO 
+- OBSERVAR CURVAS NO DROP DE FIBRA), ATENDIMENTO ABERTO DE FORMA PROATIVA. 
+MCP.09.747.03
+PORTA: 03
+
+DESCONEXÃO AUTOMÁTICA, ALARME AMS PENDENTE: , ont-gen-rx-lwarn, TIPO ALARME: Alerta, POSSÍVEL SOLUÇÃO: Verificar meio físico da CTO até a ONT (conectores, cordão, acopladores, drop)`,
+    tags: ["potência", "sinal", "onu", "cto", "pto", "drop", "fibra"],
+    detailsTooltip: `• Potência da ONU
+• Potência da OLT
+• Extrato de conexão`
   },
   {
     id: "3",
@@ -131,6 +170,10 @@ const scripts: Script[] = [
 const Index = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<"all" | "support" | "financial" | "other">("all");
+  const [editingScript, setEditingScript] = useState<string | null>(null);
+  const [scriptContents, setScriptContents] = useState<Record<string, string>>(
+    scripts.reduce((acc, script) => ({ ...acc, [script.id]: script.content }), {})
+  );
 
   const filteredScripts = scripts.filter(script => {
     const matchesSearch = script.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -144,6 +187,32 @@ const Index = () => {
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
+  };
+
+  const handleEditScript = (scriptId: string) => {
+    setEditingScript(scriptId);
+  };
+
+  const handleSaveScript = (scriptId: string) => {
+    setEditingScript(null);
+  };
+
+  const handleCancelEdit = (scriptId: string) => {
+    const originalScript = scripts.find(s => s.id === scriptId);
+    if (originalScript) {
+      setScriptContents(prev => ({
+        ...prev,
+        [scriptId]: originalScript.content
+      }));
+    }
+    setEditingScript(null);
+  };
+
+  const handleContentChange = (scriptId: string, newContent: string) => {
+    setScriptContents(prev => ({
+      ...prev,
+      [scriptId]: newContent
+    }));
   };
 
   return (
@@ -209,57 +278,118 @@ const Index = () => {
             </div>
 
             {/* Scripts Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredScripts.map((script) => (
-                <Card key={script.id} className="hover:shadow-lg transition-shadow">
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <CardTitle className="text-lg">{script.title}</CardTitle>
-                        <CardDescription className="mt-1">{script.description}</CardDescription>
-                      </div>
-                      <Badge 
-                        variant={script.category === "support" ? "default" : 
-                                script.category === "financial" ? "secondary" : "outline"}
-                        className="ml-2"
-                      >
-                        {script.category === "support" ? "Suporte" : 
-                         script.category === "financial" ? "Financeiro" : "Outros"}
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      <div className="bg-muted p-3 rounded-md font-mono text-sm">
-                        {script.content}
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        {script.tags.map((tag) => (
-                          <Badge key={tag} variant="outline" className="text-xs">
-                            {tag}
-                          </Badge>
-                        ))}
-                      </div>
-                      <div className="flex space-x-2">
-                        <Button 
-                          size="sm" 
-                          variant="outline"
-                          onClick={() => copyToClipboard(script.content)}
-                          className="flex-1"
+            <TooltipProvider>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredScripts.map((script) => (
+                  <Card key={script.id} className="hover:shadow-lg transition-shadow">
+                    <CardHeader>
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <CardTitle className="text-lg">{script.title}</CardTitle>
+                          <CardDescription className="mt-1">{script.description}</CardDescription>
+                        </div>
+                        <Badge 
+                          variant={script.category === "support" ? "default" : 
+                                  script.category === "financial" ? "secondary" : "outline"}
+                          className="ml-2"
                         >
-                          <Copy className="h-4 w-4 mr-2" />
-                          Copiar
-                        </Button>
-                        <Button size="sm" variant="outline">
-                          <ExternalLink className="h-4 w-4 mr-2" />
-                          Detalhes
-                        </Button>
+                          {script.category === "support" ? "Suporte" : 
+                           script.category === "financial" ? "Financeiro" : "Outros"}
+                        </Badge>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        {editingScript === script.id ? (
+                          <div className="space-y-2">
+                            <Textarea 
+                              value={scriptContents[script.id]}
+                              onChange={(e) => handleContentChange(script.id, e.target.value)}
+                              className="min-h-[120px] font-mono text-sm"
+                              placeholder="Conteúdo do script..."
+                            />
+                            <div className="flex space-x-2">
+                              <Button 
+                                size="sm" 
+                                onClick={() => handleSaveScript(script.id)}
+                                className="flex-1"
+                              >
+                                <Save className="h-4 w-4 mr-2" />
+                                Salvar
+                              </Button>
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                onClick={() => handleCancelEdit(script.id)}
+                              >
+                                <X className="h-4 w-4 mr-2" />
+                                Cancelar
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="bg-muted p-3 rounded-md font-mono text-sm whitespace-pre-wrap">
+                            {scriptContents[script.id]}
+                          </div>
+                        )}
+                        
+                        <div className="flex flex-wrap gap-2">
+                          {script.tags.map((tag) => (
+                            <Badge key={tag} variant="outline" className="text-xs">
+                              {tag}
+                            </Badge>
+                          ))}
+                        </div>
+                        
+                        <div className="flex space-x-2">
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => copyToClipboard(scriptContents[script.id])}
+                            className="flex-1"
+                          >
+                            <Copy className="h-4 w-4 mr-2" />
+                            Copiar
+                          </Button>
+                          
+                          {editingScript === script.id ? null : (
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => handleEditScript(script.id)}
+                            >
+                              <Edit className="h-4 w-4 mr-2" />
+                              Editar
+                            </Button>
+                          )}
+                          
+                          {script.detailsTooltip ? (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button size="sm" variant="outline">
+                                  <ExternalLink className="h-4 w-4 mr-2" />
+                                  Detalhes
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent side="top" className="max-w-xs">
+                                <div className="whitespace-pre-line text-sm">
+                                  {script.detailsTooltip}
+                                </div>
+                              </TooltipContent>
+                            </Tooltip>
+                          ) : (
+                            <Button size="sm" variant="outline">
+                              <ExternalLink className="h-4 w-4 mr-2" />
+                              Detalhes
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </TooltipProvider>
 
             {filteredScripts.length === 0 && (
               <div className="text-center py-12">
