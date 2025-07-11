@@ -174,6 +174,8 @@ const Index = () => {
   const [scriptContents, setScriptContents] = useState<Record<string, string>>(
     scripts.reduce((acc, script) => ({ ...acc, [script.id]: script.content }), {})
   );
+  
+  const agentName = "João Silva";
 
   const filteredScripts = scripts.filter(script => {
     const matchesSearch = script.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -287,6 +289,11 @@ const Index = () => {
                         <div className="flex-1">
                           <CardTitle className="text-lg">{script.title}</CardTitle>
                           <CardDescription className="mt-1">{script.description}</CardDescription>
+                          <div className="mt-2">
+                            <Badge variant="outline" className="text-xs">
+                              Agente: {agentName}
+                            </Badge>
+                          </div>
                         </div>
                         <Badge 
                           variant={script.category === "support" ? "default" : 
