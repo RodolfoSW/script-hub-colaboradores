@@ -7,6 +7,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useToast } from "@/hooks/use-toast";
 import { User, Lock } from "lucide-react";
 
+// Função para buscar usuários do localStorage
+const getUsersFromStorage = () => {
+  const stored = localStorage.getItem("system_users");
+  return stored ? JSON.parse(stored) : [];
+};
+
 const Login = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -18,19 +24,36 @@ const Login = () => {
     e.preventDefault();
     setIsLoading(true);
 
-    // Simulação de autenticação básica
-    if (username === "agente" && password === "123456") {
-      toast({
-        title: "Login realizado com sucesso!",
-        description: "Bem-vindo ao portal do agente.",
-      });
-      navigate("/portal");
-    } else if (username === "admin" && password === "admin") {
+    // Verificar admin
+    if (username === "admin" && password === "admin") {
       toast({
         title: "Login realizado com sucesso!",
         description: "Bem-vindo ao painel administrativo.",
       });
       navigate("/admin");
+      setIsLoading(false);
+      return;
+    }
+
+    // Verificar usuários criados no sistema
+    const systemUsers = getUsersFromStorage();
+    const foundUser = systemUsers.find((user: any) => 
+      user.username === username && user.password === password
+    );
+
+    if (foundUser) {
+      toast({
+        title: "Login realizado com sucesso!",
+        description: `Bem-vindo, ${foundUser.name}!`,
+      });
+      // Salvar informações do usuário logado
+      localStorage.setItem("current_user", JSON.stringify({
+        id: foundUser.id,
+        username: foundUser.username,
+        name: foundUser.name,
+        role: foundUser.role
+      }));
+      navigate("/portal");
     } else {
       toast({
         title: "Erro no login",
@@ -95,9 +118,9 @@ const Login = () => {
           </form>
 
           <div className="mt-4 text-center text-sm text-muted-foreground">
-            <p>Credenciais de teste:</p>
-            <p>Agente - Usuário: <code className="bg-muted px-1 rounded">agente</code> | Senha: <code className="bg-muted px-1 rounded">123456</code></p>
+            <p>Credenciais padrão:</p>
             <p>Admin - Usuário: <code className="bg-muted px-1 rounded">admin</code> | Senha: <code className="bg-muted px-1 rounded">admin</code></p>
+            <p>Agente padrão - Usuário: <code className="bg-muted px-1 rounded">agente</code> | Senha: <code className="bg-muted px-1 rounded">123456</code></p>
           </div>
         </CardContent>
       </Card>

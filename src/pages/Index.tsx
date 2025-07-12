@@ -180,9 +180,17 @@ const Index = () => {
   
   const navigate = useNavigate();
   const { toast } = useToast();
-  const agentName = "João Silva";
+  
+  // Buscar informações do usuário logado
+  const getCurrentUser = () => {
+    const stored = localStorage.getItem("current_user");
+    return stored ? JSON.parse(stored) : { name: "João Silva" };
+  };
+  
+  const currentUser = getCurrentUser();
 
   const handleLogout = () => {
+    localStorage.removeItem("current_user");
     toast({
       title: "Logout realizado",
       description: "Até logo!",
@@ -245,7 +253,7 @@ const Index = () => {
             </div>
             <div className="flex items-center space-x-2">
               <Badge variant="secondary" className="text-sm">
-                Agente: João Silva
+                Agente: {currentUser.name}
               </Badge>
               <Button onClick={handleLogout} variant="outline" size="sm">
                 <LogOut className="w-4 h-4 mr-2" />
@@ -310,7 +318,7 @@ const Index = () => {
                           <CardDescription className="mt-1">{script.description}</CardDescription>
                           <div className="mt-2">
                             <Badge variant="outline" className="text-xs">
-                              Agente: {agentName}
+                              Agente: {currentUser.name}
                             </Badge>
                           </div>
                         </div>

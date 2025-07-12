@@ -9,11 +9,26 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { UserPlus, LogOut, History, User, Edit, Calendar } from "lucide-react";
 
+// Função para gerenciar usuários no localStorage
+const getUsersFromStorage = () => {
+  const stored = localStorage.getItem("system_users");
+  if (stored) {
+    return JSON.parse(stored);
+  }
+  // Usuários padrão se não houver nada no localStorage
+  const defaultUsers = [
+    { id: "1", username: "agente", name: "João Silva", role: "Agente", createdAt: "2024-01-15", password: "123456" },
+  ];
+  localStorage.setItem("system_users", JSON.stringify(defaultUsers));
+  return defaultUsers;
+};
+
+const saveUsersToStorage = (users: any[]) => {
+  localStorage.setItem("system_users", JSON.stringify(users));
+};
+
 // Mock data para usuários e logs
-const mockUsers = [
-  { id: "1", username: "agente", name: "João Silva", role: "Agente", createdAt: "2024-01-15" },
-  { id: "2", username: "agente2", name: "Maria Santos", role: "Agente", createdAt: "2024-01-20" },
-];
+const mockUsers = getUsersFromStorage();
 
 const mockScriptLogs = [
   {
@@ -44,7 +59,7 @@ const mockScriptLogs = [
 
 const Admin = () => {
   const [newUser, setNewUser] = useState({ username: "", name: "", password: "" });
-  const [users, setUsers] = useState(mockUsers);
+  const [users, setUsers] = useState(getUsersFromStorage());
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -74,11 +89,14 @@ const Admin = () => {
       id: Date.now().toString(),
       username: newUser.username,
       name: newUser.name,
+      password: newUser.password,
       role: "Agente",
       createdAt: new Date().toISOString().split('T')[0]
     };
 
-    setUsers([...users, user]);
+    const updatedUsers = [...users, user];
+    setUsers(updatedUsers);
+    saveUsersToStorage(updatedUsers);
     setNewUser({ username: "", name: "", password: "" });
     
     toast({
