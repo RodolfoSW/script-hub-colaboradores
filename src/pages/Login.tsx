@@ -25,6 +25,12 @@ const Login = () => {
         description: "Bem-vindo ao portal do agente.",
       });
       navigate("/portal");
+    } else if (username === "admin" && password === "admin") {
+      toast({
+        title: "Login realizado com sucesso!",
+        description: "Bem-vindo ao painel administrativo.",
+      });
+      navigate("/admin");
     } else {
       toast({
         title: "Erro no login",
@@ -90,8 +96,8 @@ const Login = () => {
 
           <div className="mt-4 text-center text-sm text-muted-foreground">
             <p>Credenciais de teste:</p>
-            <p>Usuário: <code className="bg-muted px-1 rounded">agente</code></p>
-            <p>Senha: <code className="bg-muted px-1 rounded">123456</code></p>
+            <p>Agente - Usuário: <code className="bg-muted px-1 rounded">agente</code> | Senha: <code className="bg-muted px-1 rounded">123456</code></p>
+            <p>Admin - Usuário: <code className="bg-muted px-1 rounded">admin</code> | Senha: <code className="bg-muted px-1 rounded">admin</code></p>
           </div>
         </CardContent>
       </Card>
