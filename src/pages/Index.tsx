@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -7,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { useToast } from "@/hooks/use-toast";
 import { 
   Search, 
   Headphones, 
@@ -18,7 +20,8 @@ import {
   ExternalLink,
   Edit,
   Save,
-  X
+  X,
+  LogOut
 } from "lucide-react";
 
 interface OnuModel {
@@ -175,7 +178,17 @@ const Index = () => {
     scripts.reduce((acc, script) => ({ ...acc, [script.id]: script.content }), {})
   );
   
+  const navigate = useNavigate();
+  const { toast } = useToast();
   const agentName = "João Silva";
+
+  const handleLogout = () => {
+    toast({
+      title: "Logout realizado",
+      description: "Até logo!",
+    });
+    navigate("/");
+  };
 
   const filteredScripts = scripts.filter(script => {
     const matchesSearch = script.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -230,9 +243,15 @@ const Index = () => {
                 <p className="text-sm text-muted-foreground">Plataforma de Scripts e Suporte Técnico</p>
               </div>
             </div>
-            <Badge variant="secondary" className="text-sm">
-              Agente: João Silva
-            </Badge>
+            <div className="flex items-center space-x-2">
+              <Badge variant="secondary" className="text-sm">
+                Agente: João Silva
+              </Badge>
+              <Button onClick={handleLogout} variant="outline" size="sm">
+                <LogOut className="w-4 h-4 mr-2" />
+                Sair
+              </Button>
+            </div>
           </div>
         </div>
       </header>
