@@ -216,7 +216,38 @@ const Index = () => {
     setEditingScript(scriptId);
   };
 
+  const saveScriptLog = (scriptId: string, oldContent: string, newContent: string) => {
+    const script = scripts.find(s => s.id === scriptId);
+    if (!script) return;
+
+    const currentUser = getCurrentUser();
+    const logEntry = {
+      id: Date.now().toString(),
+      scriptTitle: script.title,
+      agentName: currentUser.name,
+      action: "Editou conteúdo",
+      timestamp: new Date().toLocaleString('pt-BR'),
+      changes: `Alterou o script "${script.title}"`
+    };
+
+    const existingLogs = JSON.parse(localStorage.getItem("script_logs") || "[]");
+    const updatedLogs = [logEntry, ...existingLogs];
+    localStorage.setItem("script_logs", JSON.stringify(updatedLogs));
+  };
+
   const handleSaveScript = (scriptId: string) => {
+    const originalScript = scripts.find(s => s.id === scriptId);
+    const newContent = scriptContents[scriptId];
+    
+    if (originalScript && originalScript.content !== newContent) {
+      saveScriptLog(scriptId, originalScript.content, newContent);
+      
+      toast({
+        title: "Script salvo com sucesso!",
+        description: "As alterações foram registradas no histórico.",
+      });
+    }
+    
     setEditingScript(null);
   };
 

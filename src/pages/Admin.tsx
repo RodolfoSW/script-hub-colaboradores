@@ -27,39 +27,16 @@ const saveUsersToStorage = (users: any[]) => {
   localStorage.setItem("system_users", JSON.stringify(users));
 };
 
-// Mock data para usuários e logs
-const mockUsers = getUsersFromStorage();
-
-const mockScriptLogs = [
-  {
-    id: "1",
-    scriptTitle: "Script de Atendimento Inicial",
-    agentName: "João Silva",
-    action: "Editou conteúdo",
-    timestamp: "2024-01-25 14:30:00",
-    changes: "Alterou saudação inicial"
-  },
-  {
-    id: "2",
-    scriptTitle: "Script de Suporte Técnico",
-    agentName: "Maria Santos",
-    action: "Adicionou palavra-chave",
-    timestamp: "2024-01-25 13:15:00",
-    changes: "Adicionou palavra-chave: 'roteador'"
-  },
-  {
-    id: "3",
-    scriptTitle: "Script de Vendas",
-    agentName: "João Silva",
-    action: "Editou conteúdo",
-    timestamp: "2024-01-25 10:45:00",
-    changes: "Atualizou informações de preços"
-  },
-];
+// Função para buscar logs do localStorage
+const getScriptLogsFromStorage = () => {
+  const stored = localStorage.getItem("script_logs");
+  return stored ? JSON.parse(stored) : [];
+};
 
 const Admin = () => {
   const [newUser, setNewUser] = useState({ username: "", name: "", password: "" });
   const [users, setUsers] = useState(getUsersFromStorage());
+  const [scriptLogs, setScriptLogs] = useState(getScriptLogsFromStorage());
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -230,7 +207,14 @@ const Admin = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {mockScriptLogs.map((log) => (
+                  {scriptLogs.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <History className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                      <p>Nenhuma alteração registrada ainda.</p>
+                      <p className="text-sm">As alterações aparecerão aqui quando os agentes editarem scripts.</p>
+                    </div>
+                  ) : (
+                    scriptLogs.map((log) => (
                     <div key={log.id} className="border rounded-lg p-4 space-y-3">
                       <div className="flex items-start justify-between">
                         <div className="space-y-1">
@@ -257,7 +241,7 @@ const Admin = () => {
                         <strong>Alteração:</strong> {log.changes}
                       </div>
                     </div>
-                  ))}
+                  )))}
                 </div>
               </CardContent>
             </Card>
