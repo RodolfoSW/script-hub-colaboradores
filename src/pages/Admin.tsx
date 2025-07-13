@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { UserPlus, LogOut, History, User, Edit, Calendar } from "lucide-react";
 
 // Função para gerenciar usuários no localStorage
@@ -17,7 +18,7 @@ const getUsersFromStorage = () => {
   }
   // Usuários padrão se não houver nada no localStorage
   const defaultUsers = [
-    { id: "1", username: "agente", name: "João Silva", role: "Agente", createdAt: "2024-01-15", password: "123456" },
+    { id: "1", username: "agente", name: "João Silva", role: "N1 Callcenter", createdAt: "2024-01-15", password: "123456" },
   ];
   localStorage.setItem("system_users", JSON.stringify(defaultUsers));
   return defaultUsers;
@@ -34,7 +35,7 @@ const getScriptLogsFromStorage = () => {
 };
 
 const Admin = () => {
-  const [newUser, setNewUser] = useState({ username: "", name: "", password: "" });
+  const [newUser, setNewUser] = useState({ username: "", name: "", password: "", role: "" });
   const [users, setUsers] = useState(getUsersFromStorage());
   const [scriptLogs, setScriptLogs] = useState(getScriptLogsFromStorage());
   const navigate = useNavigate();
@@ -43,7 +44,7 @@ const Admin = () => {
   const handleCreateUser = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!newUser.username || !newUser.name || !newUser.password) {
+    if (!newUser.username || !newUser.name || !newUser.password || !newUser.role) {
       toast({
         title: "Erro",
         description: "Todos os campos são obrigatórios.",
@@ -67,14 +68,14 @@ const Admin = () => {
       username: newUser.username,
       name: newUser.name,
       password: newUser.password,
-      role: "Agente",
+      role: newUser.role,
       createdAt: new Date().toISOString().split('T')[0]
     };
 
     const updatedUsers = [...users, user];
     setUsers(updatedUsers);
     saveUsersToStorage(updatedUsers);
-    setNewUser({ username: "", name: "", password: "" });
+    setNewUser({ username: "", name: "", password: "", role: "" });
     
     toast({
       title: "Usuário criado com sucesso!",
@@ -128,7 +129,7 @@ const Admin = () => {
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleCreateUser} className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="username">Nome de usuário</Label>
                       <Input
@@ -156,6 +157,18 @@ const Admin = () => {
                         onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
                         placeholder="Digite uma senha"
                       />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="role">Cargo</Label>
+                      <Select value={newUser.role} onValueChange={(value) => setNewUser({ ...newUser, role: value })}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione o cargo" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="N1 Callcenter">N1 Callcenter</SelectItem>
+                          <SelectItem value="N2 Callcenter">N2 Callcenter</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
                   <Button type="submit" className="w-full md:w-auto">

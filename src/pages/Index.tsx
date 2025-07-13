@@ -347,10 +347,17 @@ const Index = () => {
                         <div className="flex-1">
                           <CardTitle className="text-lg">{script.title}</CardTitle>
                           <CardDescription className="mt-1">{script.description}</CardDescription>
-                          <div className="mt-2">
+                          <div className="mt-2 space-y-1">
                             <Badge variant="outline" className="text-xs">
                               Agente: {currentUser.name}
                             </Badge>
+                            {currentUser.role && (
+                              <div>
+                                <Badge variant="secondary" className="text-xs">
+                                  {currentUser.role}
+                                </Badge>
+                              </div>
+                            )}
                           </div>
                         </div>
                         <Badge 
