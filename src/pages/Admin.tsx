@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { UserPlus, LogOut, History, User, Edit, Calendar } from "lucide-react";
+import { UserPlus, LogOut, History, User, Edit, Calendar, Trash2, Save, X } from "lucide-react";
 
 // Função para gerenciar usuários no localStorage
 const getUsersFromStorage = () => {
@@ -38,6 +38,8 @@ const Admin = () => {
   const [newUser, setNewUser] = useState({ username: "", name: "", password: "", role: "" });
   const [users, setUsers] = useState(getUsersFromStorage());
   const [scriptLogs, setScriptLogs] = useState(getScriptLogsFromStorage());
+  const [editingUser, setEditingUser] = useState<string | null>(null);
+  const [editUser, setEditUser] = useState({ username: "", name: "", password: "", role: "" });
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -89,6 +91,64 @@ const Admin = () => {
       description: "Até logo!",
     });
     navigate("/");
+  };
+
+  const handleDeleteUser = (userId: string) => {
+    const userToDelete = users.find(user => user.id === userId);
+    if (!userToDelete) return;
+
+    const updatedUsers = users.filter(user => user.id !== userId);
+    setUsers(updatedUsers);
+    saveUsersToStorage(updatedUsers);
+
+    toast({
+      title: "Usuário removido",
+      description: `${userToDelete.name} foi removido do sistema.`,
+    });
+  };
+
+  const handleEditUser = (userId: string) => {
+    const userToEdit = users.find(user => user.id === userId);
+    if (!userToEdit) return;
+
+    setEditUser({
+      username: userToEdit.username,
+      name: userToEdit.name,
+      password: userToEdit.password,
+      role: userToEdit.role
+    });
+    setEditingUser(userId);
+  };
+
+  const handleSaveUser = (userId: string) => {
+    if (!editUser.username || !editUser.name || !editUser.password || !editUser.role) {
+      toast({
+        title: "Erro",
+        description: "Todos os campos são obrigatórios.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const updatedUsers = users.map(user => 
+      user.id === userId 
+        ? { ...user, username: editUser.username, name: editUser.name, password: editUser.password, role: editUser.role }
+        : user
+    );
+
+    setUsers(updatedUsers);
+    saveUsersToStorage(updatedUsers);
+    setEditingUser(null);
+
+    toast({
+      title: "Usuário atualizado",
+      description: "As alterações foram salvas com sucesso.",
+    });
+  };
+
+  const handleCancelEdit = () => {
+    setEditingUser(null);
+    setEditUser({ username: "", name: "", password: "", role: "" });
   };
 
   return (
@@ -189,17 +249,101 @@ const Admin = () => {
               <CardContent>
                 <div className="space-y-4">
                   {users.map((user) => (
-                    <div key={user.id} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="space-y-1">
-                        <div className="font-medium">{user.name}</div>
-                        <div className="text-sm text-muted-foreground">@{user.username}</div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="secondary">{user.role}</Badge>
-                        <div className="text-xs text-muted-foreground">
-                          Criado em: {user.createdAt}
+                    <div key={user.id} className="border rounded-lg p-4">
+                      {editingUser === user.id ? (
+                        <div className="space-y-4">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <Label htmlFor={`edit-username-${user.id}`}>Nome de usuário</Label>
+                              <Input
+                                id={`edit-username-${user.id}`}
+                                value={editUser.username}
+                                onChange={(e) => setEditUser({ ...editUser, username: e.target.value })}
+                                placeholder="ex: agente3"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor={`edit-name-${user.id}`}>Nome completo</Label>
+                              <Input
+                                id={`edit-name-${user.id}`}
+                                value={editUser.name}
+                                onChange={(e) => setEditUser({ ...editUser, name: e.target.value })}
+                                placeholder="ex: Carlos Silva"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor={`edit-password-${user.id}`}>Senha</Label>
+                              <Input
+                                id={`edit-password-${user.id}`}
+                                type="password"
+                                value={editUser.password}
+                                onChange={(e) => setEditUser({ ...editUser, password: e.target.value })}
+                                placeholder="Digite uma senha"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor={`edit-role-${user.id}`}>Cargo</Label>
+                              <Select value={editUser.role} onValueChange={(value) => setEditUser({ ...editUser, role: value })}>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Selecione o cargo" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="N1 Callcenter">N1 Callcenter</SelectItem>
+                                  <SelectItem value="N2 Callcenter">N2 Callcenter</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+                          <div className="flex space-x-2">
+                            <Button 
+                              size="sm"
+                              onClick={() => handleSaveUser(user.id)}
+                            >
+                              <Save className="w-4 h-4 mr-2" />
+                              Salvar
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={handleCancelEdit}
+                            >
+                              <X className="w-4 h-4 mr-2" />
+                              Cancelar
+                            </Button>
+                          </div>
                         </div>
-                      </div>
+                      ) : (
+                        <div className="flex items-center justify-between">
+                          <div className="space-y-1">
+                            <div className="font-medium">{user.name}</div>
+                            <div className="text-sm text-muted-foreground">@{user.username}</div>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <div className="text-right">
+                              <Badge variant="secondary" className="mb-1">{user.role}</Badge>
+                              <div className="text-xs text-muted-foreground">
+                                Criado em: {user.createdAt}
+                              </div>
+                            </div>
+                            <div className="flex space-x-2">
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                onClick={() => handleEditUser(user.id)}
+                              >
+                                <Edit className="w-4 h-4" />
+                              </Button>
+                              <Button 
+                                size="sm" 
+                                variant="destructive"
+                                onClick={() => handleDeleteUser(user.id)}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
