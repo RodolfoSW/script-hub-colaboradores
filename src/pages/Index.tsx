@@ -209,7 +209,15 @@ const Index = () => {
   });
 
   const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
+    const currentUser = getCurrentUser();
+    const userInfo = `Agente: ${currentUser.name}${currentUser.role ? ` - ${currentUser.role}` : ''}\n\n`;
+    const fullContent = userInfo + text;
+    navigator.clipboard.writeText(fullContent);
+    
+    toast({
+      title: "Script copiado!",
+      description: "Script copiado com informações do agente.",
+    });
   };
 
   const handleEditScript = (scriptId: string) => {
