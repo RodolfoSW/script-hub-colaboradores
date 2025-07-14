@@ -8,7 +8,62 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { UserPlus, LogOut, History, User, Edit, Calendar, Trash2, Save, X } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { UserPlus, LogOut, History, User, Edit, Calendar, Trash2, Save, X, FileText, Plus, Copy } from "lucide-react";
+
+interface Script {
+  id: string;
+  title: string;
+  description: string;
+  category: "support" | "financial" | "other";
+  content: string;
+  tags: string[];
+  createdAt: string;
+}
+
+// Scripts padrão
+const defaultScripts: Script[] = [
+  {
+    id: "1",
+    title: "Conexão lenta",
+    description: "Cliente reportou lentidão na conexão",
+    category: "support",
+    content: `CLIENTE REPORTOU LENTIDÃO NA CONEXÃO.
+
+ONU ATIVA E OPERACIONAL.
+STATUS DE CONEXÃO: ESTABELECIDO.
+EXECUTADOS TESTES DE LATÊNCIA (PING).
+REINICIALIZAÇÃO DO EQUIPAMENTO (REBOOT) REALIZADA COM SUCESSO.
+NOVOS TESTES DE LATÊNCIA EFETUADOS APÓS REINICIALIZAÇÃO.
+CLIENTE CONFIRMA RESTABELECIMENTO DO ACESSO APÓS INTERVENÇÃO.`,
+    tags: ["lentidão", "conexão", "ping", "latência", "reboot"],
+    createdAt: "2024-01-15"
+  },
+  {
+    id: "2", 
+    title: "Potência fora do padrão",
+    description: "Verificação e correção de problemas de potência na ONU",
+    category: "support", 
+    content: `VERIFICADO EM TESTES QUE O CLIENTE TEM SINAL BAIXO POTÊNCIA NA ONU FORA DO PADRÃO
+
+INFORMATIVO ENCAMINHADO VIA CHAT ATIVO
+
+POTÊNCIA NA ONU   -25.23 dBm    /  POTÊNCIA NA -30.0 
+REALIZAR A LEITURA DE POTÊNCIA NA PORTA DO CLIENTE NA CTO E NA PTO E TAMBÉM A LIMPEZA DOS CONECTORES E/OU SUBSTITUIÇÃO 
+- OBSERVAR CURVAS NO DROP DE FIBRA), ATENDIMENTO ABERTO DE FORMA PROATIVA.`,
+    tags: ["potência", "sinal", "onu", "cto", "pto", "drop", "fibra"],
+    createdAt: "2024-01-15"
+  },
+  {
+    id: "3",
+    title: "Consulta de Débitos",
+    description: "Verificar débitos pendentes do cliente",
+    category: "financial",
+    content: "SELECT * FROM debitos WHERE cliente_id = ?",
+    tags: ["débitos", "financeiro", "consulta"],
+    createdAt: "2024-01-15"
+  }
+];
 
 // Função para gerenciar usuários no localStorage
 const getUsersFromStorage = () => {
@@ -34,12 +89,45 @@ const getScriptLogsFromStorage = () => {
   return stored ? JSON.parse(stored) : [];
 };
 
+// Funções para gerenciar scripts no localStorage
+const getScriptsFromStorage = (): Script[] => {
+  const stored = localStorage.getItem("system_scripts");
+  if (stored) {
+    return JSON.parse(stored);
+  }
+  localStorage.setItem("system_scripts", JSON.stringify(defaultScripts));
+  return defaultScripts;
+};
+
+const saveScriptsToStorage = (scripts: Script[]) => {
+  localStorage.setItem("system_scripts", JSON.stringify(scripts));
+};
+
 const Admin = () => {
   const [newUser, setNewUser] = useState({ username: "", name: "", password: "", role: "" });
   const [users, setUsers] = useState(getUsersFromStorage());
   const [scriptLogs, setScriptLogs] = useState(getScriptLogsFromStorage());
   const [editingUser, setEditingUser] = useState<string | null>(null);
   const [editUser, setEditUser] = useState({ username: "", name: "", password: "", role: "" });
+  
+  // Estados para scripts
+  const [scripts, setScripts] = useState<Script[]>(getScriptsFromStorage());
+  const [newScript, setNewScript] = useState({ 
+    title: "", 
+    description: "", 
+    category: "support" as "support" | "financial" | "other", 
+    content: "", 
+    tags: "" 
+  });
+  const [editingScript, setEditingScript] = useState<string | null>(null);
+  const [editScript, setEditScript] = useState({ 
+    title: "", 
+    description: "", 
+    category: "support" as "support" | "financial" | "other", 
+    content: "", 
+    tags: "" 
+  });
+  
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -151,6 +239,114 @@ const Admin = () => {
     setEditUser({ username: "", name: "", password: "", role: "" });
   };
 
+  // Funções para gerenciar scripts
+  const handleCreateScript = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!newScript.title || !newScript.description || !newScript.content) {
+      toast({
+        title: "Erro",
+        description: "Título, descrição e conteúdo são obrigatórios.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const script: Script = {
+      id: Date.now().toString(),
+      title: newScript.title,
+      description: newScript.description,
+      category: newScript.category,
+      content: newScript.content,
+      tags: newScript.tags.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0),
+      createdAt: new Date().toISOString().split('T')[0]
+    };
+
+    const updatedScripts = [...scripts, script];
+    setScripts(updatedScripts);
+    saveScriptsToStorage(updatedScripts);
+    setNewScript({ title: "", description: "", category: "support", content: "", tags: "" });
+    
+    toast({
+      title: "Script criado com sucesso!",
+      description: `Script "${newScript.title}" foi adicionado ao sistema.`,
+    });
+  };
+
+  const handleDeleteScript = (scriptId: string) => {
+    const scriptToDelete = scripts.find(script => script.id === scriptId);
+    if (!scriptToDelete) return;
+
+    const updatedScripts = scripts.filter(script => script.id !== scriptId);
+    setScripts(updatedScripts);
+    saveScriptsToStorage(updatedScripts);
+
+    toast({
+      title: "Script removido",
+      description: `"${scriptToDelete.title}" foi removido do sistema.`,
+    });
+  };
+
+  const handleEditScript = (scriptId: string) => {
+    const scriptToEdit = scripts.find(script => script.id === scriptId);
+    if (!scriptToEdit) return;
+
+    setEditScript({
+      title: scriptToEdit.title,
+      description: scriptToEdit.description,
+      category: scriptToEdit.category,
+      content: scriptToEdit.content,
+      tags: scriptToEdit.tags.join(', ')
+    });
+    setEditingScript(scriptId);
+  };
+
+  const handleSaveScript = (scriptId: string) => {
+    if (!editScript.title || !editScript.description || !editScript.content) {
+      toast({
+        title: "Erro",
+        description: "Título, descrição e conteúdo são obrigatórios.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const updatedScripts = scripts.map(script => 
+      script.id === scriptId 
+        ? { 
+            ...script, 
+            title: editScript.title, 
+            description: editScript.description, 
+            category: editScript.category,
+            content: editScript.content,
+            tags: editScript.tags.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0)
+          }
+        : script
+    );
+
+    setScripts(updatedScripts);
+    saveScriptsToStorage(updatedScripts);
+    setEditingScript(null);
+
+    toast({
+      title: "Script atualizado",
+      description: "As alterações foram salvas com sucesso.",
+    });
+  };
+
+  const handleCancelScriptEdit = () => {
+    setEditingScript(null);
+    setEditScript({ title: "", description: "", category: "support", content: "", tags: "" });
+  };
+
+  const copyScriptToClipboard = (content: string) => {
+    navigator.clipboard.writeText(content);
+    toast({
+      title: "Script copiado!",
+      description: "Conteúdo copiado para a área de transferência.",
+    });
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 to-secondary/5">
       <header className="border-b bg-white/50 backdrop-blur-sm">
@@ -165,10 +361,14 @@ const Admin = () => {
 
       <main className="container mx-auto px-4 py-8">
         <Tabs defaultValue="users" className="space-y-6">
-          <TabsList className="grid w-full max-w-md grid-cols-2">
+          <TabsList className="grid w-full max-w-2xl grid-cols-3">
             <TabsTrigger value="users" className="flex items-center gap-2">
               <UserPlus className="w-4 h-4" />
               Usuários
+            </TabsTrigger>
+            <TabsTrigger value="scripts" className="flex items-center gap-2">
+              <FileText className="w-4 h-4" />
+              Scripts
             </TabsTrigger>
             <TabsTrigger value="logs" className="flex items-center gap-2">
               <History className="w-4 h-4" />
@@ -346,6 +546,238 @@ const Admin = () => {
                       )}
                     </div>
                   ))}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="scripts" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Plus className="w-5 h-5" />
+                  Criar Novo Script
+                </CardTitle>
+                <CardDescription>
+                  Adicione novos scripts ao sistema para os agentes utilizarem
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleCreateScript} className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="script-title">Título</Label>
+                      <Input
+                        id="script-title"
+                        value={newScript.title}
+                        onChange={(e) => setNewScript({ ...newScript, title: e.target.value })}
+                        placeholder="ex: Conexão lenta"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="script-category">Categoria</Label>
+                      <Select value={newScript.category} onValueChange={(value) => setNewScript({ ...newScript, category: value as "support" | "financial" | "other" })}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione a categoria" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="support">Suporte</SelectItem>
+                          <SelectItem value="financial">Financeiro</SelectItem>
+                          <SelectItem value="other">Outros</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="script-description">Descrição</Label>
+                    <Input
+                      id="script-description"
+                      value={newScript.description}
+                      onChange={(e) => setNewScript({ ...newScript, description: e.target.value })}
+                      placeholder="ex: Cliente reportou lentidão na conexão"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="script-content">Conteúdo do Script</Label>
+                    <Textarea
+                      id="script-content"
+                      value={newScript.content}
+                      onChange={(e) => setNewScript({ ...newScript, content: e.target.value })}
+                      placeholder="Digite o conteúdo do script..."
+                      className="min-h-[150px] font-mono"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="script-tags">Tags (separadas por vírgula)</Label>
+                    <Input
+                      id="script-tags"
+                      value={newScript.tags}
+                      onChange={(e) => setNewScript({ ...newScript, tags: e.target.value })}
+                      placeholder="ex: lentidão, conexão, ping, latência"
+                    />
+                  </div>
+                  <Button type="submit" className="w-full md:w-auto">
+                    <Plus className="w-4 h-4 mr-2" />
+                    Criar Script
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <FileText className="w-5 h-5" />
+                  Scripts Cadastrados ({scripts.length})
+                </CardTitle>
+                <CardDescription>
+                  Gerencie todos os scripts disponíveis para os agentes
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {scripts.map((script) => (
+                    <div key={script.id} className="border rounded-lg p-4">
+                      {editingScript === script.id ? (
+                        <div className="space-y-4">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <Label htmlFor={`edit-script-title-${script.id}`}>Título</Label>
+                              <Input
+                                id={`edit-script-title-${script.id}`}
+                                value={editScript.title}
+                                onChange={(e) => setEditScript({ ...editScript, title: e.target.value })}
+                                placeholder="Título do script"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor={`edit-script-category-${script.id}`}>Categoria</Label>
+                              <Select value={editScript.category} onValueChange={(value) => setEditScript({ ...editScript, category: value as "support" | "financial" | "other" })}>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Selecione a categoria" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="support">Suporte</SelectItem>
+                                  <SelectItem value="financial">Financeiro</SelectItem>
+                                  <SelectItem value="other">Outros</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor={`edit-script-description-${script.id}`}>Descrição</Label>
+                            <Input
+                              id={`edit-script-description-${script.id}`}
+                              value={editScript.description}
+                              onChange={(e) => setEditScript({ ...editScript, description: e.target.value })}
+                              placeholder="Descrição do script"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor={`edit-script-content-${script.id}`}>Conteúdo</Label>
+                            <Textarea
+                              id={`edit-script-content-${script.id}`}
+                              value={editScript.content}
+                              onChange={(e) => setEditScript({ ...editScript, content: e.target.value })}
+                              className="min-h-[150px] font-mono"
+                              placeholder="Conteúdo do script"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor={`edit-script-tags-${script.id}`}>Tags</Label>
+                            <Input
+                              id={`edit-script-tags-${script.id}`}
+                              value={editScript.tags}
+                              onChange={(e) => setEditScript({ ...editScript, tags: e.target.value })}
+                              placeholder="Tags separadas por vírgula"
+                            />
+                          </div>
+                          <div className="flex space-x-2">
+                            <Button 
+                              size="sm"
+                              onClick={() => handleSaveScript(script.id)}
+                            >
+                              <Save className="w-4 h-4 mr-2" />
+                              Salvar
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={handleCancelScriptEdit}
+                            >
+                              <X className="w-4 h-4 mr-2" />
+                              Cancelar
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          <div className="flex items-start justify-between">
+                            <div className="space-y-2 flex-1">
+                              <div className="flex items-center gap-3">
+                                <h3 className="font-medium text-lg">{script.title}</h3>
+                                <Badge 
+                                  variant={script.category === "support" ? "default" : 
+                                          script.category === "financial" ? "secondary" : "outline"}
+                                >
+                                  {script.category === "support" ? "Suporte" : 
+                                   script.category === "financial" ? "Financeiro" : "Outros"}
+                                </Badge>
+                              </div>
+                              <p className="text-sm text-muted-foreground">{script.description}</p>
+                              <div className="flex flex-wrap gap-1">
+                                {script.tags.map((tag) => (
+                                  <Badge key={tag} variant="outline" className="text-xs">
+                                    {tag}
+                                  </Badge>
+                                ))}
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <div className="text-xs text-muted-foreground mb-2">
+                                Criado em: {script.createdAt}
+                              </div>
+                              <div className="flex space-x-2">
+                                <Button 
+                                  size="sm" 
+                                  variant="outline"
+                                  onClick={() => copyScriptToClipboard(script.content)}
+                                >
+                                  <Copy className="w-4 h-4" />
+                                </Button>
+                                <Button 
+                                  size="sm" 
+                                  variant="outline"
+                                  onClick={() => handleEditScript(script.id)}
+                                >
+                                  <Edit className="w-4 h-4" />
+                                </Button>
+                                <Button 
+                                  size="sm" 
+                                  variant="destructive"
+                                  onClick={() => handleDeleteScript(script.id)}
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="bg-muted/50 p-3 rounded border-l-2 border-primary/20">
+                            <div className="text-sm font-mono whitespace-pre-wrap max-h-32 overflow-y-auto">
+                              {script.content}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  {scripts.length === 0 && (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                      <p>Nenhum script cadastrado ainda.</p>
+                      <p className="text-sm">Crie o primeiro script para começar.</p>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>

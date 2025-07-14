@@ -94,13 +94,20 @@ const onuModels: OnuModel[] = [
   }
 ];
 
-const scripts: Script[] = [
-  {
-    id: "1",
-    title: "Conexão lenta",
-    description: "Cliente reportou lentidão na conexão",
-    category: "support",
-    content: `CLIENTE REPORTOU LENTIDÃO NA CONEXÃO.
+// Função para carregar scripts do localStorage (gerenciados pelo admin)
+const getScriptsFromStorage = (): Script[] => {
+  const stored = localStorage.getItem("system_scripts");
+  if (stored) {
+    return JSON.parse(stored);
+  }
+  // Scripts padrão caso não haja nada no localStorage
+  return [
+    {
+      id: "1",
+      title: "Conexão lenta",
+      description: "Cliente reportou lentidão na conexão",
+      category: "support",
+      content: `CLIENTE REPORTOU LENTIDÃO NA CONEXÃO.
 
 ONU ATIVA E OPERACIONAL.
 STATUS DE CONEXÃO: ESTABELECIDO.
@@ -108,8 +115,8 @@ EXECUTADOS TESTES DE LATÊNCIA (PING).
 REINICIALIZAÇÃO DO EQUIPAMENTO (REBOOT) REALIZADA COM SUCESSO.
 NOVOS TESTES DE LATÊNCIA EFETUADOS APÓS REINICIALIZAÇÃO.
 CLIENTE CONFIRMA RESTABELECIMENTO DO ACESSO APÓS INTERVENÇÃO.`,
-    tags: ["lentidão", "conexão", "ping", "latência", "reboot"],
-    detailsTooltip: `Testes a serem realizados:
+      tags: ["lentidão", "conexão", "ping", "latência", "reboot"],
+      detailsTooltip: `Testes a serem realizados:
 • Ping ipv4 ipv6
 • TraceRouter
 • Verificar canais do wifi 2.4 e 5.8
@@ -119,13 +126,13 @@ CLIENTE CONFIRMA RESTABELECIMENTO DO ACESSO APÓS INTERVENÇÃO.`,
 • Potência da ONU
 • Potência da OLT
 • Extrato de conexão`
-  },
-  {
-    id: "2", 
-    title: "POTENCIA FORA DO PADRÃO",
-    description: "Verificação e correção de problemas de potência na ONU",
-    category: "support", 
-    content: `VERIFICADO EM TESTES QUE O(A) RAIMUNDO GABRIEL FERREIRA DA SILVA
+    },
+    {
+      id: "2", 
+      title: "POTENCIA FORA DO PADRÃO",
+      description: "Verificação e correção de problemas de potência na ONU",
+      category: "support", 
+      content: `VERIFICADO EM TESTES QUE O(A) RAIMUNDO GABRIEL FERREIRA DA SILVA
 TELL: (96) 99127-3053
 M SINAL BAIXO POTÊNCIA NA ONU FORA DO PADRÃO
 
@@ -139,41 +146,29 @@ MCP.09.747.03
 PORTA: 03
 
 DESCONEXÃO AUTOMÁTICA, ALARME AMS PENDENTE: , ont-gen-rx-lwarn, TIPO ALARME: Alerta, POSSÍVEL SOLUÇÃO: Verificar meio físico da CTO até a ONT (conectores, cordão, acopladores, drop)`,
-    tags: ["potência", "sinal", "onu", "cto", "pto", "drop", "fibra"],
-    detailsTooltip: `• Potência da ONU
+      tags: ["potência", "sinal", "onu", "cto", "pto", "drop", "fibra"],
+      detailsTooltip: `• Potência da ONU
 • Potência da OLT
 • Extrato de conexão`
-  },
-  {
-    id: "3",
-    title: "Consulta de Débitos",
-    description: "Verificar débitos pendentes do cliente",
-    category: "financial",
-    content: "SELECT * FROM debitos WHERE cliente_id = ?",
-    tags: ["débitos", "financeiro", "consulta"]
-  },
-  {
-    id: "4",
-    title: "Gerar Boleto",
-    description: "Script para gerar segunda via de boleto",
-    category: "financial", 
-    content: "EXEC sp_gerar_boleto @cliente_id, @vencimento",
-    tags: ["boleto", "cobrança", "financeiro"]
-  },
-  {
-    id: "5",
-    title: "Backup de Configuração",
-    description: "Fazer backup das configurações da OLT",
-    category: "other",
-    content: "copy running-config tftp://192.168.1.100/backup.cfg",
-    tags: ["backup", "configuração", "olt"]
-  }
-];
+    },
+    {
+      id: "3",
+      title: "Consulta de Débitos",
+      description: "Verificar débitos pendentes do cliente",
+      category: "financial",
+      content: "SELECT * FROM debitos WHERE cliente_id = ?",
+      tags: ["débitos", "financeiro", "consulta"]
+    }
+  ];
+};
 
 const Index = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<"all" | "support" | "financial" | "other">("all");
   const [editingScript, setEditingScript] = useState<string | null>(null);
+  
+  // Carregar scripts do localStorage (gerenciados pelo admin)
+  const scripts = getScriptsFromStorage();
   const [scriptContents, setScriptContents] = useState<Record<string, string>>(
     scripts.reduce((acc, script) => ({ ...acc, [script.id]: script.content }), {})
   );
