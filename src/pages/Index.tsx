@@ -21,7 +21,9 @@ import {
   Edit,
   Save,
   X,
-  LogOut
+  LogOut,
+  Hash,
+  Plus
 } from "lucide-react";
 
 interface OnuModel {
@@ -41,6 +43,13 @@ interface Script {
   content: string;
   tags: string[];
   detailsTooltip?: string;
+}
+
+interface Protocol {
+  id: string;
+  number: string;
+  agentName: string;
+  timestamp: string;
 }
 
 const onuModels: OnuModel[] = [
@@ -184,6 +193,63 @@ const Index = () => {
   
   const currentUser = getCurrentUser();
 
+  // Estados para protocolos
+  const [protocolNumber, setProtocolNumber] = useState("");
+  
+  // Funções para gerenciar protocolos
+  const getProtocolsFromStorage = (): Protocol[] => {
+    const stored = localStorage.getItem("system_protocols");
+    return stored ? JSON.parse(stored) : [];
+  };
+
+  const saveProtocolsToStorage = (protocols: Protocol[]) => {
+    localStorage.setItem("system_protocols", JSON.stringify(protocols));
+  };
+
+  const getUserProtocolCount = (agentName: string): number => {
+    const protocols = getProtocolsFromStorage();
+    return protocols.filter(p => p.agentName === agentName).length;
+  };
+
+  const handleAddProtocol = () => {
+    if (!protocolNumber.trim()) {
+      toast({
+        title: "Erro",
+        description: "Digite o número do protocolo.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const protocols = getProtocolsFromStorage();
+    const protocolExists = protocols.some(p => p.number === protocolNumber.trim());
+    
+    if (protocolExists) {
+      toast({
+        title: "Erro",
+        description: "Este protocolo já foi registrado.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const newProtocol: Protocol = {
+      id: Date.now().toString(),
+      number: protocolNumber.trim(),
+      agentName: currentUser.name,
+      timestamp: new Date().toLocaleString('pt-BR')
+    };
+
+    const updatedProtocols = [...protocols, newProtocol];
+    saveProtocolsToStorage(updatedProtocols);
+    setProtocolNumber("");
+
+    toast({
+      title: "Protocolo adicionado!",
+      description: `Protocolo ${protocolNumber} registrado com sucesso.`,
+    });
+  };
+
   const handleLogout = () => {
     localStorage.removeItem("current_user");
     toast({
@@ -300,10 +366,14 @@ const Index = () => {
 
       <div className="container mx-auto px-4 py-8">
         <Tabs defaultValue="scripts" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 mb-8">
+          <TabsList className="grid w-full grid-cols-3 mb-8">
             <TabsTrigger value="scripts" className="flex items-center space-x-2">
               <FileText className="h-4 w-4" />
               <span>Scripts</span>
+            </TabsTrigger>
+            <TabsTrigger value="protocols" className="flex items-center space-x-2">
+              <Hash className="h-4 w-4" />
+              <span>Protocolos ({getUserProtocolCount(currentUser.name)})</span>
             </TabsTrigger>
             <TabsTrigger value="onu-models" className="flex items-center space-x-2">
               <Wifi className="h-4 w-4" />
@@ -473,6 +543,65 @@ const Index = () => {
                 <p className="text-muted-foreground">Tente ajustar sua busca ou filtros.</p>
               </div>
             )}
+          </TabsContent>
+
+          {/* Protocols Tab */}
+          <TabsContent value="protocols" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Hash className="w-5 h-5" />
+                  Registrar Protocolo
+                </CardTitle>
+                <CardDescription>
+                  Digite o número do protocolo para registrar o atendimento
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex space-x-4">
+                  <div className="flex-1">
+                    <Input 
+                      placeholder="Digite o número do protocolo..."
+                      value={protocolNumber}
+                      onChange={(e) => setProtocolNumber(e.target.value)}
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter') {
+                          handleAddProtocol();
+                        }
+                      }}
+                    />
+                  </div>
+                  <Button onClick={handleAddProtocol}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Adicionar
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  <span>Resumo de Protocolos</span>
+                  <Badge variant="secondary" className="text-lg px-3 py-1">
+                    {getUserProtocolCount(currentUser.name)} protocolo(s)
+                  </Badge>
+                </CardTitle>
+                <CardDescription>
+                  Total de protocolos registrados por você
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="bg-muted p-4 rounded-lg">
+                  <p className="text-sm text-muted-foreground mb-2">
+                    Agente: <span className="font-semibold">{currentUser.name}</span>
+                  </p>
+                  <p className="text-2xl font-bold text-primary">
+                    {getUserProtocolCount(currentUser.name)} protocolos tratados
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* ONU Models Tab */}

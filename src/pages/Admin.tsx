@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { UserPlus, LogOut, History, User, Edit, Calendar, Trash2, Save, X, FileText, Plus, Copy } from "lucide-react";
+import { UserPlus, LogOut, History, User, Edit, Calendar, Trash2, Save, X, FileText, Plus, Copy, Hash } from "lucide-react";
 
 interface Script {
   id: string;
@@ -19,6 +19,13 @@ interface Script {
   content: string;
   tags: string[];
   createdAt: string;
+}
+
+interface Protocol {
+  id: string;
+  number: string;
+  agentName: string;
+  timestamp: string;
 }
 
 // Scripts padrão
@@ -347,6 +354,14 @@ const Admin = () => {
     });
   };
 
+  // Funções para gerenciar protocolos
+  const getProtocolsFromStorage = (): Protocol[] => {
+    const stored = localStorage.getItem("system_protocols");
+    return stored ? JSON.parse(stored) : [];
+  };
+
+  const protocols = getProtocolsFromStorage();
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 to-secondary/5">
       <header className="border-b bg-white/50 backdrop-blur-sm">
@@ -361,7 +376,7 @@ const Admin = () => {
 
       <main className="container mx-auto px-4 py-8">
         <Tabs defaultValue="users" className="space-y-6">
-          <TabsList className="grid w-full max-w-2xl grid-cols-3">
+          <TabsList className="grid w-full max-w-4xl grid-cols-4">
             <TabsTrigger value="users" className="flex items-center gap-2">
               <UserPlus className="w-4 h-4" />
               Usuários
@@ -369,6 +384,10 @@ const Admin = () => {
             <TabsTrigger value="scripts" className="flex items-center gap-2">
               <FileText className="w-4 h-4" />
               Scripts
+            </TabsTrigger>
+            <TabsTrigger value="protocols" className="flex items-center gap-2">
+              <Hash className="w-4 h-4" />
+              Protocolos ({protocols.length})
             </TabsTrigger>
             <TabsTrigger value="logs" className="flex items-center gap-2">
               <History className="w-4 h-4" />
@@ -779,6 +798,53 @@ const Admin = () => {
                     </div>
                   )}
                 </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="protocols" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Hash className="w-5 h-5" />
+                  Histórico de Protocolos ({protocols.length})
+                </CardTitle>
+                <CardDescription>
+                  Todos os protocolos registrados pelos agentes
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {protocols.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Hash className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                    <p>Nenhum protocolo registrado ainda.</p>
+                    <p className="text-sm">Os protocolos aparecerão aqui quando os agentes começarem a registrá-los.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {[...protocols].reverse().map((protocol) => (
+                      <div key={protocol.id} className="border rounded-lg p-4">
+                        <div className="flex items-center justify-between">
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-3">
+                              <h4 className="font-medium text-lg">Protocolo: {protocol.number}</h4>
+                              <Badge variant="secondary">{protocol.agentName}</Badge>
+                            </div>
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                              <Calendar className="w-4 h-4" />
+                              {protocol.timestamp}
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className="bg-muted/50 px-3 py-1 rounded text-sm">
+                              ID: {protocol.id}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
