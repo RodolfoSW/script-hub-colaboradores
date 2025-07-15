@@ -128,7 +128,8 @@ const convertGoogleDriveLink = (url: string): string => {
   const googleDriveMatch = url.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/);
   if (googleDriveMatch) {
     const fileId = googleDriveMatch[1];
-    return `https://drive.google.com/uc?id=${fileId}`;
+    // Tenta diferentes formatos para acessar as imagens do Google Drive
+    return `https://drive.google.com/uc?export=view&id=${fileId}`;
   }
   
   return url;
@@ -1223,13 +1224,18 @@ const Admin = () => {
                               <Label className="text-sm font-medium">Imagens:</Label>
                               <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                                  {onu.images.map((image, index) => (
-                                   <div key={index} className="aspect-square bg-muted rounded border overflow-hidden">
+                                   <div key={index} className="aspect-square bg-muted rounded border overflow-hidden relative">
                                      <img 
                                        src={convertGoogleDriveLink(image)} 
                                        alt={`${onu.model} - Imagem ${index + 1}`}
                                        className="w-full h-full object-cover"
                                        onError={(e) => {
-                                         e.currentTarget.style.display = 'none';
+                                         const target = e.currentTarget;
+                                         target.style.display = 'none';
+                                         const parent = target.parentElement;
+                                         if (parent) {
+                                           parent.innerHTML = `<div class="flex items-center justify-center h-full text-xs text-muted-foreground">Imagem ${index + 1}<br/>não carregou</div>`;
+                                         }
                                        }}
                                      />
                                    </div>
