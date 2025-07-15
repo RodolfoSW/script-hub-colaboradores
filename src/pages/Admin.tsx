@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { UserPlus, LogOut, History, User, Edit, Calendar, Trash2, Save, X, FileText, Plus, Copy, Hash } from "lucide-react";
+import { UserPlus, LogOut, History, User, Edit, Calendar, Trash2, Save, X, FileText, Plus, Copy, Hash, Router, Image, Link } from "lucide-react";
 
 interface Script {
   id: string;
@@ -26,6 +26,16 @@ interface Protocol {
   number: string;
   agentName: string;
   timestamp: string;
+}
+
+interface ONU {
+  id: string;
+  model: string;
+  brand: string;
+  images: string[];
+  descriptions: string[];
+  manualLink?: string;
+  createdAt: string;
 }
 
 // Scripts padrão
@@ -110,6 +120,16 @@ const saveScriptsToStorage = (scripts: Script[]) => {
   localStorage.setItem("system_scripts", JSON.stringify(scripts));
 };
 
+// Funções para gerenciar ONUs no localStorage
+const getONUsFromStorage = (): ONU[] => {
+  const stored = localStorage.getItem("system_onus");
+  return stored ? JSON.parse(stored) : [];
+};
+
+const saveONUsToStorage = (onus: ONU[]) => {
+  localStorage.setItem("system_onus", JSON.stringify(onus));
+};
+
 const Admin = () => {
   const [newUser, setNewUser] = useState({ username: "", name: "", password: "", role: "" });
   const [users, setUsers] = useState(getUsersFromStorage());
@@ -133,6 +153,24 @@ const Admin = () => {
     category: "support" as "support" | "financial" | "other", 
     content: "", 
     tags: "" 
+  });
+  
+  // Estados para ONUs
+  const [onus, setOnus] = useState<ONU[]>(getONUsFromStorage());
+  const [newOnu, setNewOnu] = useState({ 
+    model: "", 
+    brand: "", 
+    images: ["", "", "", ""], 
+    descriptions: ["", "", "", ""], 
+    manualLink: "" 
+  });
+  const [editingOnu, setEditingOnu] = useState<string | null>(null);
+  const [editOnu, setEditOnu] = useState({ 
+    model: "", 
+    brand: "", 
+    images: ["", "", "", ""], 
+    descriptions: ["", "", "", ""], 
+    manualLink: "" 
   });
   
   const navigate = useNavigate();
@@ -354,6 +392,130 @@ const Admin = () => {
     });
   };
 
+  // Funções para gerenciar ONUs
+  const handleCreateOnu = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!newOnu.model || !newOnu.brand) {
+      toast({
+        title: "Erro",
+        description: "Modelo e marca são obrigatórios.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const onu: ONU = {
+      id: Date.now().toString(),
+      model: newOnu.model,
+      brand: newOnu.brand,
+      images: newOnu.images.filter(img => img.trim() !== ""),
+      descriptions: newOnu.descriptions.filter(desc => desc.trim() !== ""),
+      manualLink: newOnu.manualLink || undefined,
+      createdAt: new Date().toISOString().split('T')[0]
+    };
+
+    const updatedOnus = [...onus, onu];
+    setOnus(updatedOnus);
+    saveONUsToStorage(updatedOnus);
+    setNewOnu({ model: "", brand: "", images: ["", "", "", ""], descriptions: ["", "", "", ""], manualLink: "" });
+    
+    toast({
+      title: "ONU criada com sucesso!",
+      description: `ONU "${newOnu.model}" foi adicionada ao sistema.`,
+    });
+  };
+
+  const handleDeleteOnu = (onuId: string) => {
+    const onuToDelete = onus.find(onu => onu.id === onuId);
+    if (!onuToDelete) return;
+
+    const updatedOnus = onus.filter(onu => onu.id !== onuId);
+    setOnus(updatedOnus);
+    saveONUsToStorage(updatedOnus);
+
+    toast({
+      title: "ONU removida",
+      description: `"${onuToDelete.model}" foi removida do sistema.`,
+    });
+  };
+
+  const handleEditOnu = (onuId: string) => {
+    const onuToEdit = onus.find(onu => onu.id === onuId);
+    if (!onuToEdit) return;
+
+    setEditOnu({
+      model: onuToEdit.model,
+      brand: onuToEdit.brand,
+      images: [...onuToEdit.images, "", "", "", ""].slice(0, 4),
+      descriptions: [...onuToEdit.descriptions, "", "", "", ""].slice(0, 4),
+      manualLink: onuToEdit.manualLink || ""
+    });
+    setEditingOnu(onuId);
+  };
+
+  const handleSaveOnu = (onuId: string) => {
+    if (!editOnu.model || !editOnu.brand) {
+      toast({
+        title: "Erro",
+        description: "Modelo e marca são obrigatórios.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const updatedOnus = onus.map(onu => 
+      onu.id === onuId 
+        ? { 
+            ...onu, 
+            model: editOnu.model, 
+            brand: editOnu.brand,
+            images: editOnu.images.filter(img => img.trim() !== ""),
+            descriptions: editOnu.descriptions.filter(desc => desc.trim() !== ""),
+            manualLink: editOnu.manualLink || undefined
+          }
+        : onu
+    );
+
+    setOnus(updatedOnus);
+    saveONUsToStorage(updatedOnus);
+    setEditingOnu(null);
+
+    toast({
+      title: "ONU atualizada",
+      description: "As alterações foram salvas com sucesso.",
+    });
+  };
+
+  const handleCancelOnuEdit = () => {
+    setEditingOnu(null);
+    setEditOnu({ model: "", brand: "", images: ["", "", "", ""], descriptions: ["", "", "", ""], manualLink: "" });
+  };
+
+  const updateNewOnuImage = (index: number, value: string) => {
+    const newImages = [...newOnu.images];
+    newImages[index] = value;
+    setNewOnu({ ...newOnu, images: newImages });
+  };
+
+  const updateNewOnuDescription = (index: number, value: string) => {
+    const newDescriptions = [...newOnu.descriptions];
+    newDescriptions[index] = value;
+    setNewOnu({ ...newOnu, descriptions: newDescriptions });
+  };
+
+  const updateEditOnuImage = (index: number, value: string) => {
+    const newImages = [...editOnu.images];
+    newImages[index] = value;
+    setEditOnu({ ...editOnu, images: newImages });
+  };
+
+  const updateEditOnuDescription = (index: number, value: string) => {
+    const newDescriptions = [...editOnu.descriptions];
+    newDescriptions[index] = value;
+    setEditOnu({ ...editOnu, descriptions: newDescriptions });
+  };
+
   // Funções para gerenciar protocolos
   const getProtocolsFromStorage = (): Protocol[] => {
     const stored = localStorage.getItem("system_protocols");
@@ -376,7 +538,7 @@ const Admin = () => {
 
       <main className="container mx-auto px-4 py-8">
         <Tabs defaultValue="users" className="space-y-6">
-          <TabsList className="grid w-full max-w-4xl grid-cols-4">
+          <TabsList className="grid w-full max-w-6xl grid-cols-5">
             <TabsTrigger value="users" className="flex items-center gap-2">
               <UserPlus className="w-4 h-4" />
               Usuários
@@ -384,6 +546,10 @@ const Admin = () => {
             <TabsTrigger value="scripts" className="flex items-center gap-2">
               <FileText className="w-4 h-4" />
               Scripts
+            </TabsTrigger>
+            <TabsTrigger value="onus" className="flex items-center gap-2">
+              <Router className="w-4 h-4" />
+              ONUs ({onus.length})
             </TabsTrigger>
             <TabsTrigger value="protocols" className="flex items-center gap-2">
               <Hash className="w-4 h-4" />
@@ -795,6 +961,290 @@ const Admin = () => {
                       <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
                       <p>Nenhum script cadastrado ainda.</p>
                       <p className="text-sm">Crie o primeiro script para começar.</p>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="onus" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Plus className="w-5 h-5" />
+                  Criar Nova ONU
+                </CardTitle>
+                <CardDescription>
+                  Adicione novas ONUs ao sistema com imagens, descrições e manual
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleCreateOnu} className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="onu-model">Modelo</Label>
+                      <Input
+                        id="onu-model"
+                        value={newOnu.model}
+                        onChange={(e) => setNewOnu({ ...newOnu, model: e.target.value })}
+                        placeholder="ex: AC1200"
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="onu-brand">Marca</Label>
+                      <Input
+                        id="onu-brand"
+                        value={newOnu.brand}
+                        onChange={(e) => setNewOnu({ ...newOnu, brand: e.target.value })}
+                        placeholder="ex: Intelbras"
+                        required
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="onu-manual">Link do Manual (opcional)</Label>
+                    <Input
+                      id="onu-manual"
+                      value={newOnu.manualLink}
+                      onChange={(e) => setNewOnu({ ...newOnu, manualLink: e.target.value })}
+                      placeholder="ex: https://link-do-manual.com"
+                      type="url"
+                    />
+                  </div>
+
+                  <div className="space-y-4">
+                    <Label className="text-base font-medium">Imagens (até 4)</Label>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {newOnu.images.map((image, index) => (
+                        <div key={index} className="space-y-2">
+                          <Label htmlFor={`onu-image-${index}`}>Imagem {index + 1}</Label>
+                          <Input
+                            id={`onu-image-${index}`}
+                            value={image}
+                            onChange={(e) => updateNewOnuImage(index, e.target.value)}
+                            placeholder="URL da imagem"
+                            type="url"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <Label className="text-base font-medium">Descrições (até 4)</Label>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {newOnu.descriptions.map((description, index) => (
+                        <div key={index} className="space-y-2">
+                          <Label htmlFor={`onu-description-${index}`}>Descrição {index + 1}</Label>
+                          <Textarea
+                            id={`onu-description-${index}`}
+                            value={description}
+                            onChange={(e) => updateNewOnuDescription(index, e.target.value)}
+                            placeholder="Descrição da ONU"
+                            className="min-h-[80px]"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <Button type="submit" className="w-full md:w-auto">
+                    <Plus className="w-4 h-4 mr-2" />
+                    Criar ONU
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Router className="w-5 h-5" />
+                  ONUs Cadastradas ({onus.length})
+                </CardTitle>
+                <CardDescription>
+                  Gerencie todas as ONUs disponíveis no sistema
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {onus.map((onu) => (
+                    <div key={onu.id} className="border rounded-lg p-4">
+                      {editingOnu === onu.id ? (
+                        <div className="space-y-4">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <Label htmlFor={`edit-onu-model-${onu.id}`}>Modelo</Label>
+                              <Input
+                                id={`edit-onu-model-${onu.id}`}
+                                value={editOnu.model}
+                                onChange={(e) => setEditOnu({ ...editOnu, model: e.target.value })}
+                                placeholder="Modelo da ONU"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor={`edit-onu-brand-${onu.id}`}>Marca</Label>
+                              <Input
+                                id={`edit-onu-brand-${onu.id}`}
+                                value={editOnu.brand}
+                                onChange={(e) => setEditOnu({ ...editOnu, brand: e.target.value })}
+                                placeholder="Marca da ONU"
+                              />
+                            </div>
+                          </div>
+                          
+                          <div className="space-y-2">
+                            <Label htmlFor={`edit-onu-manual-${onu.id}`}>Link do Manual</Label>
+                            <Input
+                              id={`edit-onu-manual-${onu.id}`}
+                              value={editOnu.manualLink}
+                              onChange={(e) => setEditOnu({ ...editOnu, manualLink: e.target.value })}
+                              placeholder="Link do manual"
+                              type="url"
+                            />
+                          </div>
+
+                          <div className="space-y-4">
+                            <Label className="text-base font-medium">Imagens</Label>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              {editOnu.images.map((image, index) => (
+                                <div key={index} className="space-y-2">
+                                  <Label htmlFor={`edit-onu-image-${onu.id}-${index}`}>Imagem {index + 1}</Label>
+                                  <Input
+                                    id={`edit-onu-image-${onu.id}-${index}`}
+                                    value={image}
+                                    onChange={(e) => updateEditOnuImage(index, e.target.value)}
+                                    placeholder="URL da imagem"
+                                    type="url"
+                                  />
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
+                          <div className="space-y-4">
+                            <Label className="text-base font-medium">Descrições</Label>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              {editOnu.descriptions.map((description, index) => (
+                                <div key={index} className="space-y-2">
+                                  <Label htmlFor={`edit-onu-description-${onu.id}-${index}`}>Descrição {index + 1}</Label>
+                                  <Textarea
+                                    id={`edit-onu-description-${onu.id}-${index}`}
+                                    value={description}
+                                    onChange={(e) => updateEditOnuDescription(index, e.target.value)}
+                                    placeholder="Descrição da ONU"
+                                    className="min-h-[80px]"
+                                  />
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
+                          <div className="flex space-x-2">
+                            <Button 
+                              size="sm"
+                              onClick={() => handleSaveOnu(onu.id)}
+                            >
+                              <Save className="w-4 h-4 mr-2" />
+                              Salvar
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={handleCancelOnuEdit}
+                            >
+                              <X className="w-4 h-4 mr-2" />
+                              Cancelar
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          <div className="flex items-start justify-between">
+                            <div className="space-y-2 flex-1">
+                              <div className="flex items-center gap-3">
+                                <h3 className="font-medium text-lg">{onu.model}</h3>
+                                <Badge variant="secondary">{onu.brand}</Badge>
+                              </div>
+                              {onu.manualLink && (
+                                <a 
+                                  href={onu.manualLink} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800"
+                                >
+                                  <Link className="w-3 h-3" />
+                                  Manual
+                                </a>
+                              )}
+                            </div>
+                            <div className="text-right">
+                              <div className="text-xs text-muted-foreground mb-2">
+                                Criado em: {onu.createdAt}
+                              </div>
+                              <div className="flex space-x-2">
+                                <Button 
+                                  size="sm" 
+                                  variant="outline"
+                                  onClick={() => handleEditOnu(onu.id)}
+                                >
+                                  <Edit className="w-4 h-4" />
+                                </Button>
+                                <Button 
+                                  size="sm" 
+                                  variant="destructive"
+                                  onClick={() => handleDeleteOnu(onu.id)}
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          {onu.images.length > 0 && (
+                            <div className="space-y-2">
+                              <Label className="text-sm font-medium">Imagens:</Label>
+                              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                                {onu.images.map((image, index) => (
+                                  <div key={index} className="aspect-square bg-muted rounded border overflow-hidden">
+                                    <img 
+                                      src={image} 
+                                      alt={`${onu.model} - Imagem ${index + 1}`}
+                                      className="w-full h-full object-cover"
+                                      onError={(e) => {
+                                        e.currentTarget.style.display = 'none';
+                                      }}
+                                    />
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          
+                          {onu.descriptions.length > 0 && (
+                            <div className="space-y-2">
+                              <Label className="text-sm font-medium">Descrições:</Label>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                {onu.descriptions.map((description, index) => (
+                                  <div key={index} className="bg-muted/50 p-3 rounded border-l-2 border-primary/20">
+                                    <div className="text-sm">{description}</div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  {onus.length === 0 && (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <Router className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                      <p>Nenhuma ONU cadastrada ainda.</p>
+                      <p className="text-sm">Crie a primeira ONU para começar.</p>
                     </div>
                   )}
                 </div>
