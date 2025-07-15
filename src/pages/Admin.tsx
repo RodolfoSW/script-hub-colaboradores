@@ -120,6 +120,20 @@ const saveScriptsToStorage = (scripts: Script[]) => {
   localStorage.setItem("system_scripts", JSON.stringify(scripts));
 };
 
+// Função para converter links do Google Drive para URLs diretas de imagem
+const convertGoogleDriveLink = (url: string): string => {
+  if (!url) return url;
+  
+  // Verifica se é um link do Google Drive
+  const googleDriveMatch = url.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/);
+  if (googleDriveMatch) {
+    const fileId = googleDriveMatch[1];
+    return `https://drive.google.com/uc?id=${fileId}`;
+  }
+  
+  return url;
+};
+
 // Funções para gerenciar ONUs no localStorage
 const getONUsFromStorage = (): ONU[] => {
   const stored = localStorage.getItem("system_onus");
@@ -1208,18 +1222,18 @@ const Admin = () => {
                             <div className="space-y-2">
                               <Label className="text-sm font-medium">Imagens:</Label>
                               <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                                {onu.images.map((image, index) => (
-                                  <div key={index} className="aspect-square bg-muted rounded border overflow-hidden">
-                                    <img 
-                                      src={image} 
-                                      alt={`${onu.model} - Imagem ${index + 1}`}
-                                      className="w-full h-full object-cover"
-                                      onError={(e) => {
-                                        e.currentTarget.style.display = 'none';
-                                      }}
-                                    />
-                                  </div>
-                                ))}
+                                 {onu.images.map((image, index) => (
+                                   <div key={index} className="aspect-square bg-muted rounded border overflow-hidden">
+                                     <img 
+                                       src={convertGoogleDriveLink(image)} 
+                                       alt={`${onu.model} - Imagem ${index + 1}`}
+                                       className="w-full h-full object-cover"
+                                       onError={(e) => {
+                                         e.currentTarget.style.display = 'none';
+                                       }}
+                                     />
+                                   </div>
+                                 ))}
                               </div>
                             </div>
                           )}
