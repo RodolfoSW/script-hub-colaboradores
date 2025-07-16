@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,6 +10,18 @@ import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { UserPlus, LogOut, History, User, Edit, Calendar, Trash2, Save, X, FileText, Plus, Copy, Hash, Router, Image, Link } from "lucide-react";
+import { GoogleSheetsConfig } from "@/components/GoogleSheetsConfig";
+import {
+  getUsersFromStorage,
+  saveUsersToStorage,
+  getScriptsFromStorage,
+  saveScriptsToStorage,
+  getONUsFromStorage,
+  saveONUsToStorage,
+  getProtocolsFromStorage,
+  saveProtocolsToStorage,
+  getScriptLogsFromStorage
+} from "@/services/googleSheets";
 
 interface Script {
   id: string;
@@ -82,42 +94,10 @@ REALIZAR A LEITURA DE POTÊNCIA NA PORTA DO CLIENTE NA CTO E NA PTO E TAMBÉM A 
   }
 ];
 
-// Função para gerenciar usuários no localStorage
-const getUsersFromStorage = () => {
-  const stored = localStorage.getItem("system_users");
-  if (stored) {
-    return JSON.parse(stored);
-  }
-  // Usuários padrão se não houver nada no localStorage
-  const defaultUsers = [
-    { id: "1", username: "agente", name: "João Silva", role: "N1 Callcenter", createdAt: "2024-01-15", password: "123456" },
-  ];
-  localStorage.setItem("system_users", JSON.stringify(defaultUsers));
-  return defaultUsers;
-};
-
-const saveUsersToStorage = (users: any[]) => {
-  localStorage.setItem("system_users", JSON.stringify(users));
-};
-
-// Função para buscar logs do localStorage
-const getScriptLogsFromStorage = () => {
+// Função para buscar logs do localStorage (fallback)
+const getScriptLogsFromLocalStorage = () => {
   const stored = localStorage.getItem("script_logs");
   return stored ? JSON.parse(stored) : [];
-};
-
-// Funções para gerenciar scripts no localStorage
-const getScriptsFromStorage = (): Script[] => {
-  const stored = localStorage.getItem("system_scripts");
-  if (stored) {
-    return JSON.parse(stored);
-  }
-  localStorage.setItem("system_scripts", JSON.stringify(defaultScripts));
-  return defaultScripts;
-};
-
-const saveScriptsToStorage = (scripts: Script[]) => {
-  localStorage.setItem("system_scripts", JSON.stringify(scripts));
 };
 
 // Função para converter links do Google Drive para URLs diretas de imagem
@@ -135,25 +115,16 @@ const convertGoogleDriveLink = (url: string): string => {
   return url;
 };
 
-// Funções para gerenciar ONUs no localStorage
-const getONUsFromStorage = (): ONU[] => {
-  const stored = localStorage.getItem("system_onus");
-  return stored ? JSON.parse(stored) : [];
-};
-
-const saveONUsToStorage = (onus: ONU[]) => {
-  localStorage.setItem("system_onus", JSON.stringify(onus));
-};
 
 const Admin = () => {
   const [newUser, setNewUser] = useState({ username: "", name: "", password: "", role: "" });
-  const [users, setUsers] = useState(getUsersFromStorage());
-  const [scriptLogs, setScriptLogs] = useState(getScriptLogsFromStorage());
+  const [users, setUsers] = useState<any[]>([]);
+  const [scriptLogs, setScriptLogs] = useState<any[]>([]);
   const [editingUser, setEditingUser] = useState<string | null>(null);
   const [editUser, setEditUser] = useState({ username: "", name: "", password: "", role: "" });
   
   // Estados para scripts
-  const [scripts, setScripts] = useState<Script[]>(getScriptsFromStorage());
+  const [scripts, setScripts] = useState<Script[]>([]);
   const [newScript, setNewScript] = useState({ 
     title: "", 
     description: "", 
@@ -171,7 +142,7 @@ const Admin = () => {
   });
   
   // Estados para ONUs
-  const [onus, setOnus] = useState<ONU[]>(getONUsFromStorage());
+  const [onus, setOnus] = useState<ONU[]>([]);
   const [newOnu, setNewOnu] = useState({ 
     model: "", 
     brand: "", 
@@ -188,10 +159,72 @@ const Admin = () => {
     manualLink: "" 
   });
   
+  // Estados para controlar carregamento
+  const [isLoading, setIsLoading] = useState(false);
+  const [googleSheetsConfigured, setGoogleSheetsConfigured] = useState(false);
+  
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const handleCreateUser = (e: React.FormEvent) => {
+  // Função para carregar dados do Google Sheets
+  const loadData = async () => {
+    if (!googleSheetsConfigured) return;
+    
+    setIsLoading(true);
+    try {
+      const [usersData, scriptsData, onusData, logsData] = await Promise.all([
+        getUsersFromStorage(),
+        getScriptsFromStorage(),
+        getONUsFromStorage(),
+        getScriptLogsFromStorage()
+      ]);
+      
+      setUsers(usersData);
+      setScripts(scriptsData.length > 0 ? scriptsData : defaultScripts);
+      setOnus(onusData);
+      setScriptLogs(logsData);
+    } catch (error) {
+      console.error('Erro ao carregar dados:', error);
+      toast({
+        title: "Erro ao carregar dados",
+        description: "Usando dados locais como fallback.",
+        variant: "destructive",
+      });
+      
+      // Fallback para localStorage
+      const localUsers = localStorage.getItem("system_users");
+      const localScripts = localStorage.getItem("system_scripts");
+      const localOnus = localStorage.getItem("system_onus");
+      const localLogs = localStorage.getItem("script_logs");
+      
+      setUsers(localUsers ? JSON.parse(localUsers) : [{ id: "1", username: "agente", name: "João Silva", role: "N1 Callcenter", createdAt: "2024-01-15", password: "123456" }]);
+      setScripts(localScripts ? JSON.parse(localScripts) : defaultScripts);
+      setOnus(localOnus ? JSON.parse(localOnus) : []);
+      setScriptLogs(localLogs ? JSON.parse(localLogs) : []);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Carregar dados quando o componente for montado ou quando Google Sheets for configurado
+  useEffect(() => {
+    loadData();
+  }, [googleSheetsConfigured]);
+
+  // Verificar se Google Sheets já está configurado
+  useEffect(() => {
+    const apiKey = localStorage.getItem("google_sheets_api_key");
+    if (apiKey) {
+      setGoogleSheetsConfigured(true);
+    }
+  }, []);
+
+  const handleGoogleSheetsConfigured = (apiKey: string) => {
+    setGoogleSheetsConfigured(true);
+    loadData();
+  };
+
+  const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!newUser.username || !newUser.name || !newUser.password || !newUser.role) {
@@ -224,13 +257,23 @@ const Admin = () => {
 
     const updatedUsers = [...users, user];
     setUsers(updatedUsers);
-    saveUsersToStorage(updatedUsers);
-    setNewUser({ username: "", name: "", password: "", role: "" });
     
-    toast({
-      title: "Usuário criado com sucesso!",
-      description: `Agente ${newUser.name} foi adicionado ao sistema.`,
-    });
+    try {
+      await saveUsersToStorage(updatedUsers);
+      setNewUser({ username: "", name: "", password: "", role: "" });
+      
+      toast({
+        title: "Usuário criado com sucesso!",
+        description: `Agente ${newUser.name} foi adicionado ao sistema.`,
+      });
+    } catch (error) {
+      console.error('Erro ao salvar usuário:', error);
+      toast({
+        title: "Erro ao salvar",
+        description: "Erro ao salvar no Google Sheets. Dados salvos localmente.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleLogout = () => {
@@ -241,18 +284,27 @@ const Admin = () => {
     navigate("/");
   };
 
-  const handleDeleteUser = (userId: string) => {
+  const handleDeleteUser = async (userId: string) => {
     const userToDelete = users.find(user => user.id === userId);
     if (!userToDelete) return;
 
     const updatedUsers = users.filter(user => user.id !== userId);
     setUsers(updatedUsers);
-    saveUsersToStorage(updatedUsers);
-
-    toast({
-      title: "Usuário removido",
-      description: `${userToDelete.name} foi removido do sistema.`,
-    });
+    
+    try {
+      await saveUsersToStorage(updatedUsers);
+      toast({
+        title: "Usuário removido",
+        description: `${userToDelete.name} foi removido do sistema.`,
+      });
+    } catch (error) {
+      console.error('Erro ao remover usuário:', error);
+      toast({
+        title: "Erro ao remover",
+        description: "Erro ao salvar no Google Sheets. Alteração salva localmente.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleEditUser = (userId: string) => {
@@ -268,7 +320,7 @@ const Admin = () => {
     setEditingUser(userId);
   };
 
-  const handleSaveUser = (userId: string) => {
+  const handleSaveUser = async (userId: string) => {
     if (!editUser.username || !editUser.name || !editUser.password || !editUser.role) {
       toast({
         title: "Erro",
@@ -285,13 +337,22 @@ const Admin = () => {
     );
 
     setUsers(updatedUsers);
-    saveUsersToStorage(updatedUsers);
     setEditingUser(null);
-
-    toast({
-      title: "Usuário atualizado",
-      description: "As alterações foram salvas com sucesso.",
-    });
+    
+    try {
+      await saveUsersToStorage(updatedUsers);
+      toast({
+        title: "Usuário atualizado",
+        description: "As alterações foram salvas com sucesso.",
+      });
+    } catch (error) {
+      console.error('Erro ao salvar usuário:', error);
+      toast({
+        title: "Erro ao salvar",
+        description: "Erro ao salvar no Google Sheets. Dados salvos localmente.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleCancelEdit = () => {
@@ -300,7 +361,7 @@ const Admin = () => {
   };
 
   // Funções para gerenciar scripts
-  const handleCreateScript = (e: React.FormEvent) => {
+  const handleCreateScript = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!newScript.title || !newScript.description || !newScript.content) {
@@ -324,27 +385,46 @@ const Admin = () => {
 
     const updatedScripts = [...scripts, script];
     setScripts(updatedScripts);
-    saveScriptsToStorage(updatedScripts);
-    setNewScript({ title: "", description: "", category: "support", content: "", tags: "" });
     
-    toast({
-      title: "Script criado com sucesso!",
-      description: `Script "${newScript.title}" foi adicionado ao sistema.`,
-    });
+    try {
+      await saveScriptsToStorage(updatedScripts);
+      setNewScript({ title: "", description: "", category: "support", content: "", tags: "" });
+      
+      toast({
+        title: "Script criado com sucesso!",
+        description: `Script "${newScript.title}" foi adicionado ao sistema.`,
+      });
+    } catch (error) {
+      console.error('Erro ao salvar script:', error);
+      toast({
+        title: "Erro ao salvar",
+        description: "Erro ao salvar no Google Sheets. Dados salvos localmente.",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleDeleteScript = (scriptId: string) => {
+  const handleDeleteScript = async (scriptId: string) => {
     const scriptToDelete = scripts.find(script => script.id === scriptId);
     if (!scriptToDelete) return;
 
     const updatedScripts = scripts.filter(script => script.id !== scriptId);
     setScripts(updatedScripts);
-    saveScriptsToStorage(updatedScripts);
-
-    toast({
-      title: "Script removido",
-      description: `"${scriptToDelete.title}" foi removido do sistema.`,
-    });
+    
+    try {
+      await saveScriptsToStorage(updatedScripts);
+      toast({
+        title: "Script removido",
+        description: `"${scriptToDelete.title}" foi removido do sistema.`,
+      });
+    } catch (error) {
+      console.error('Erro ao remover script:', error);
+      toast({
+        title: "Erro ao remover",
+        description: "Erro ao salvar no Google Sheets. Alteração salva localmente.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleEditScript = (scriptId: string) => {
@@ -361,7 +441,7 @@ const Admin = () => {
     setEditingScript(scriptId);
   };
 
-  const handleSaveScript = (scriptId: string) => {
+  const handleSaveScript = async (scriptId: string) => {
     if (!editScript.title || !editScript.description || !editScript.content) {
       toast({
         title: "Erro",
@@ -385,13 +465,22 @@ const Admin = () => {
     );
 
     setScripts(updatedScripts);
-    saveScriptsToStorage(updatedScripts);
     setEditingScript(null);
-
-    toast({
-      title: "Script atualizado",
-      description: "As alterações foram salvas com sucesso.",
-    });
+    
+    try {
+      await saveScriptsToStorage(updatedScripts);
+      toast({
+        title: "Script atualizado",
+        description: "As alterações foram salvas com sucesso.",
+      });
+    } catch (error) {
+      console.error('Erro ao salvar script:', error);
+      toast({
+        title: "Erro ao salvar",
+        description: "Erro ao salvar no Google Sheets. Dados salvos localmente.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleCancelScriptEdit = () => {
@@ -408,7 +497,7 @@ const Admin = () => {
   };
 
   // Funções para gerenciar ONUs
-  const handleCreateOnu = (e: React.FormEvent) => {
+  const handleCreateOnu = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!newOnu.model || !newOnu.brand) {
@@ -432,13 +521,22 @@ const Admin = () => {
 
     const updatedOnus = [...onus, onu];
     setOnus(updatedOnus);
-    saveONUsToStorage(updatedOnus);
-    setNewOnu({ model: "", brand: "", images: ["", "", "", ""], descriptions: ["", "", "", ""], manualLink: "" });
     
-    toast({
-      title: "ONU criada com sucesso!",
-      description: `ONU "${newOnu.model}" foi adicionada ao sistema.`,
-    });
+    try {
+      await saveONUsToStorage(updatedOnus);
+      setNewOnu({ model: "", brand: "", images: ["", "", "", ""], descriptions: ["", "", "", ""], manualLink: "" });
+      
+      toast({
+        title: "ONU criada com sucesso!",
+        description: `ONU "${newOnu.model}" foi adicionada ao sistema.`,
+      });
+    } catch (error) {
+      toast({
+        title: "Erro ao salvar",
+        description: "Erro ao salvar no Google Sheets. Dados salvos localmente.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleDeleteOnu = (onuId: string) => {
