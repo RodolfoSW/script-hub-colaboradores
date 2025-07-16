@@ -30,9 +30,10 @@ interface OnuModel {
   id: string;
   brand: string;
   model: string;
-  description: string;
+  descriptions: string[];
   images: string[];
-  specs: string[];
+  manualLink?: string;
+  createdAt: string;
 }
 
 interface Script {
@@ -52,71 +53,46 @@ interface Protocol {
   timestamp: string;
 }
 
-const onuModels: OnuModel[] = [
-  {
-    id: "1",
-    brand: "NOKIA",
-    model: "G-240W-C",
-    description: "ONU GPON com WiFi integrado",
-    images: [
-      "/api/placeholder/400/300",
-      "/api/placeholder/400/300", 
-      "/api/placeholder/400/300"
-    ],
-    specs: ["GPON", "WiFi 2.4GHz", "4 portas Ethernet", "1 porta USB"]
-  },
-  {
-    id: "2", 
-    brand: "DATACOM",
-    model: "DM985-404",
-    description: "ONU GPON residencial",
-    images: [
-      "/api/placeholder/400/300",
-      "/api/placeholder/400/300",
-      "/api/placeholder/400/300"
-    ],
-    specs: ["GPON", "4 portas Ethernet", "2 portas FXS", "WiFi dual band"]
-  },
-  {
-    id: "3",
-    brand: "HUAWEI", 
-    model: "HG8245H",
-    description: "Gateway GPON multifuncional",
-    images: [
-      "/api/placeholder/400/300",
-      "/api/placeholder/400/300",
-      "/api/placeholder/400/300"
-    ],
-    specs: ["GPON", "4 portas GE", "2 portas FXS", "WiFi 802.11n", "1 porta USB"]
-  },
-  {
-    id: "4",
-    brand: "TPLINK",
-    model: "TX-6610",
-    description: "ONU GPON com WiFi AC",
-    images: [
-      "/api/placeholder/400/300", 
-      "/api/placeholder/400/300",
-      "/api/placeholder/400/300"
-    ],
-    specs: ["GPON", "WiFi AC1200", "4 portas Gigabit", "2 antenas externas"]
+// Função para converter links do Google Drive para URLs diretas de imagem
+const convertGoogleDriveLink = (url: string): string => {
+  if (!url) return url;
+  
+  // Verifica se é um link do Google Drive
+  const googleDriveMatch = url.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/);
+  if (googleDriveMatch) {
+    const fileId = googleDriveMatch[1];
+    return `https://drive.google.com/uc?export=view&id=${fileId}`;
   }
-];
+  
+  return url;
+};
+
+// Função para carregar ONUs do localStorage (gerenciadas pelo admin)
+const getONUsFromStorage = (): OnuModel[] => {
+  try {
+    const stored = localStorage.getItem("system_onus");
+    return stored ? JSON.parse(stored) : [];
+  } catch (error) {
+    console.error("Erro ao carregar ONUs:", error);
+    return [];
+  }
+};
 
 // Função para carregar scripts do localStorage (gerenciados pelo admin)
 const getScriptsFromStorage = (): Script[] => {
-  const stored = localStorage.getItem("system_scripts");
-  if (stored) {
-    return JSON.parse(stored);
-  }
-  // Scripts padrão caso não haja nada no localStorage
-  return [
-    {
-      id: "1",
-      title: "Conexão lenta",
-      description: "Cliente reportou lentidão na conexão",
-      category: "support",
-      content: `CLIENTE REPORTOU LENTIDÃO NA CONEXÃO.
+  try {
+    const stored = localStorage.getItem("system_scripts");
+    if (stored) {
+      return JSON.parse(stored);
+    }
+    // Scripts padrão caso não haja nada no localStorage
+    return [
+      {
+        id: "1",
+        title: "Conexão lenta",
+        description: "Cliente reportou lentidão na conexão",
+        category: "support",
+        content: `CLIENTE REPORTOU LENTIDÃO NA CONEXÃO.
 
 ONU ATIVA E OPERACIONAL.
 STATUS DE CONEXÃO: ESTABELECIDO.
@@ -124,8 +100,8 @@ EXECUTADOS TESTES DE LATÊNCIA (PING).
 REINICIALIZAÇÃO DO EQUIPAMENTO (REBOOT) REALIZADA COM SUCESSO.
 NOVOS TESTES DE LATÊNCIA EFETUADOS APÓS REINICIALIZAÇÃO.
 CLIENTE CONFIRMA RESTABELECIMENTO DO ACESSO APÓS INTERVENÇÃO.`,
-      tags: ["lentidão", "conexão", "ping", "latência", "reboot"],
-      detailsTooltip: `Testes a serem realizados:
+        tags: ["lentidão", "conexão", "ping", "latência", "reboot"],
+        detailsTooltip: `Testes a serem realizados:
 • Ping ipv4 ipv6
 • TraceRouter
 • Verificar canais do wifi 2.4 e 5.8
@@ -135,13 +111,13 @@ CLIENTE CONFIRMA RESTABELECIMENTO DO ACESSO APÓS INTERVENÇÃO.`,
 • Potência da ONU
 • Potência da OLT
 • Extrato de conexão`
-    },
-    {
-      id: "2", 
-      title: "POTENCIA FORA DO PADRÃO",
-      description: "Verificação e correção de problemas de potência na ONU",
-      category: "support", 
-      content: `VERIFICADO EM TESTES QUE O(A) RAIMUNDO GABRIEL FERREIRA DA SILVA
+      },
+      {
+        id: "2", 
+        title: "POTENCIA FORA DO PADRÃO",
+        description: "Verificação e correção de problemas de potência na ONU",
+        category: "support", 
+        content: `VERIFICADO EM TESTES QUE O(A) RAIMUNDO GABRIEL FERREIRA DA SILVA
 TELL: (96) 99127-3053
 M SINAL BAIXO POTÊNCIA NA ONU FORA DO PADRÃO
 
@@ -155,23 +131,59 @@ MCP.09.747.03
 PORTA: 03
 
 DESCONEXÃO AUTOMÁTICA, ALARME AMS PENDENTE: , ont-gen-rx-lwarn, TIPO ALARME: Alerta, POSSÍVEL SOLUÇÃO: Verificar meio físico da CTO até a ONT (conectores, cordão, acopladores, drop)`,
-      tags: ["potência", "sinal", "onu", "cto", "pto", "drop", "fibra"],
-      detailsTooltip: `• Potência da ONU
+        tags: ["potência", "sinal", "onu", "cto", "pto", "drop", "fibra"],
+        detailsTooltip: `• Potência da ONU
 • Potência da OLT
 • Extrato de conexão`
-    },
-    {
-      id: "3",
-      title: "Consulta de Débitos",
-      description: "Verificar débitos pendentes do cliente",
-      category: "financial",
-      content: "SELECT * FROM debitos WHERE cliente_id = ?",
-      tags: ["débitos", "financeiro", "consulta"]
-    }
-  ];
+      },
+      {
+        id: "3",
+        title: "Consulta de Débitos",
+        description: "Verificar débitos pendentes do cliente",
+        category: "financial",
+        content: "SELECT * FROM debitos WHERE cliente_id = ?",
+        tags: ["débitos", "financeiro", "consulta"]
+      }
+    ];
+  } catch (error) {
+    console.error("Erro ao carregar scripts:", error);
+    // Retornar scripts padrão em caso de erro
+    return [
+      {
+        id: "1",
+        title: "Conexão lenta",
+        description: "Cliente reportou lentidão na conexão",
+        category: "support",
+        content: "CLIENTE REPORTOU LENTIDÃO NA CONEXÃO.\n\nONU ATIVA E OPERACIONAL.\nSTATUS DE CONEXÃO: ESTABELECIDO.",
+        tags: ["lentidão", "conexão", "ping", "latência", "reboot"]
+      }
+    ];
+  }
 };
 
 const Index = () => {
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  
+  // Verificar se o usuário está autenticado
+  const getCurrentUser = () => {
+    try {
+      const stored = localStorage.getItem("current_user");
+      return stored ? JSON.parse(stored) : null;
+    } catch (error) {
+      console.error("Erro ao carregar usuário:", error);
+      return null;
+    }
+  };
+  
+  const currentUser = getCurrentUser();
+  
+  // Redirecionar para login se não estiver autenticado
+  if (!currentUser) {
+    navigate("/");
+    return null;
+  }
+  
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<"all" | "support" | "financial" | "other">("all");
   const [editingScript, setEditingScript] = useState<string | null>(null);
@@ -182,16 +194,8 @@ const Index = () => {
     scripts.reduce((acc, script) => ({ ...acc, [script.id]: script.content }), {})
   );
   
-  const navigate = useNavigate();
-  const { toast } = useToast();
-  
-  // Buscar informações do usuário logado
-  const getCurrentUser = () => {
-    const stored = localStorage.getItem("current_user");
-    return stored ? JSON.parse(stored) : { name: "João Silva" };
-  };
-  
-  const currentUser = getCurrentUser();
+  // Carregar ONUs do localStorage (gerenciadas pelo admin)
+  const onuModels = getONUsFromStorage();
 
   // Estados para protocolos
   const [protocolNumber, setProtocolNumber] = useState("");
@@ -606,61 +610,97 @@ const Index = () => {
 
           {/* ONU Models Tab */}
           <TabsContent value="onu-models" className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              {onuModels.map((onu) => (
-                <Card key={onu.id} className="overflow-hidden">
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
+            {onuModels.length === 0 ? (
+              <div className="text-center py-12">
+                <Wifi className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-foreground mb-2">Nenhuma ONU cadastrada</h3>
+                <p className="text-muted-foreground">As ONUs cadastradas pelo admin aparecerão aqui.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {onuModels.map((onu) => (
+                  <Card key={onu.id} className="overflow-hidden">
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <CardTitle className="text-xl flex items-center space-x-2">
+                            <span>{onu.brand}</span>
+                            <Badge variant="outline">{onu.model}</Badge>
+                          </CardTitle>
+                          <CardDescription className="mt-1">{onu.descriptions[0] || "Sem descrição"}</CardDescription>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                      {/* Image Carousel */}
+                      <Carousel className="w-full">
+                        <CarouselContent>
+                          {onu.images.length > 0 ? (
+                            onu.images.map((image, index) => (
+                              <CarouselItem key={index}>
+                                <div className="flex aspect-video items-center justify-center p-6 bg-muted rounded-lg">
+                                  <img 
+                                    src={convertGoogleDriveLink(image)} 
+                                    alt={`${onu.brand} ${onu.model} - Imagem ${index + 1}`}
+                                    className="max-h-full max-w-full object-contain"
+                                    onError={(e) => {
+                                      const target = e.currentTarget;
+                                      target.style.display = 'none';
+                                      const parent = target.parentElement;
+                                      if (parent) {
+                                        parent.innerHTML = `<div class="text-center text-muted-foreground">Imagem ${index + 1} não carregou</div>`;
+                                      }
+                                    }}
+                                  />
+                                </div>
+                              </CarouselItem>
+                            ))
+                          ) : (
+                            <CarouselItem>
+                              <div className="flex aspect-video items-center justify-center p-6 bg-muted rounded-lg">
+                                <div className="text-center text-muted-foreground">
+                                  <Wifi className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                                  <p>Nenhuma imagem disponível</p>
+                                </div>
+                              </div>
+                            </CarouselItem>
+                          )}
+                        </CarouselContent>
+                        <CarouselPrevious />
+                        <CarouselNext />
+                      </Carousel>
+
+                      {/* Descriptions */}
                       <div>
-                        <CardTitle className="text-xl flex items-center space-x-2">
-                          <span>{onu.brand}</span>
-                          <Badge variant="outline">{onu.model}</Badge>
-                        </CardTitle>
-                        <CardDescription className="mt-1">{onu.description}</CardDescription>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-6">
-                    {/* Image Carousel */}
-                    <Carousel className="w-full">
-                      <CarouselContent>
-                        {onu.images.map((image, index) => (
-                          <CarouselItem key={index}>
-                            <div className="flex aspect-video items-center justify-center p-6 bg-muted rounded-lg">
-                              <img 
-                                src={image} 
-                                alt={`${onu.brand} ${onu.model} - Visão ${index + 1}`}
-                                className="max-h-full max-w-full object-contain"
-                              />
+                        <h4 className="font-semibold text-foreground mb-3">Descrições</h4>
+                        <div className="space-y-2">
+                          {onu.descriptions.filter(desc => desc.trim() !== "").map((desc, index) => (
+                            <div key={index} className="flex items-start space-x-2">
+                              <div className="h-2 w-2 bg-primary rounded-full mt-2 flex-shrink-0"></div>
+                              <span className="text-sm text-muted-foreground">{desc}</span>
                             </div>
-                          </CarouselItem>
-                        ))}
-                      </CarouselContent>
-                      <CarouselPrevious />
-                      <CarouselNext />
-                    </Carousel>
-
-                    {/* Specifications */}
-                    <div>
-                      <h4 className="font-semibold text-foreground mb-3">Especificações</h4>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        {onu.specs.map((spec, index) => (
-                          <div key={index} className="flex items-center space-x-2">
-                            <div className="h-2 w-2 bg-primary rounded-full"></div>
-                            <span className="text-sm text-muted-foreground">{spec}</span>
-                          </div>
-                        ))}
+                          ))}
+                          {onu.descriptions.filter(desc => desc.trim() !== "").length === 0 && (
+                            <p className="text-sm text-muted-foreground">Nenhuma descrição disponível.</p>
+                          )}
+                        </div>
                       </div>
-                    </div>
 
-                    <Button variant="outline" className="w-full">
-                      <FileText className="h-4 w-4 mr-2" />
-                      Ver Manual Técnico
-                    </Button>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+                      {onu.manualLink && (
+                        <Button 
+                          variant="outline" 
+                          className="w-full"
+                          onClick={() => window.open(onu.manualLink, '_blank')}
+                        >
+                          <FileText className="h-4 w-4 mr-2" />
+                          Ver Manual Técnico
+                        </Button>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
           </TabsContent>
         </Tabs>
       </div>
