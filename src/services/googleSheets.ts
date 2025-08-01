@@ -105,11 +105,10 @@ async function readSheetData(range: string = 'A:U') {
 // Função para escrever dados na planilha
 async function writeSheetData(range: string, values: any[][]) {
   try {
-    const response = await makeGoogleSheetsRequest(`/values/${range}`, {
+    const response = await makeGoogleSheetsRequest(`/values/${range}?valueInputOption=USER_ENTERED`, {
       method: 'PUT',
       body: JSON.stringify({
-        values: values,
-        valueInputOption: 'RAW'
+        values: values
       })
     });
     return response;
@@ -122,11 +121,10 @@ async function writeSheetData(range: string, values: any[][]) {
 // Função para adicionar nova linha na planilha
 async function appendSheetData(values: any[]) {
   try {
-    const response = await makeGoogleSheetsRequest('/values/A:U:append', {
+    const response = await makeGoogleSheetsRequest('/values/A:U:append?valueInputOption=USER_ENTERED', {
       method: 'POST',
       body: JSON.stringify({
-        values: [values],
-        valueInputOption: 'RAW'
+        values: [values]
       })
     });
     return response;
