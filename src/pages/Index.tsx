@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -67,14 +67,16 @@ const convertGoogleDriveLink = (url: string): string => {
   return url;
 };
 
-// Função para carregar ONUs do localStorage (gerenciadas pelo admin)
-const getONUsFromStorage = (): OnuModel[] => {
+// Função para carregar ONUs do Google Sheets (gerenciadas pelo admin)
+const getONUsFromStorage = async (): Promise<OnuModel[]> => {
   try {
-    const stored = localStorage.getItem("system_onus");
-    return stored ? JSON.parse(stored) : [];
+    const { getONUsFromStorage } = await import("@/services/googleSheets");
+    return await getONUsFromStorage();
   } catch (error) {
     console.error("Erro ao carregar ONUs:", error);
-    return [];
+    // Fallback para localStorage
+    const stored = localStorage.getItem("system_onus");
+    return stored ? JSON.parse(stored) : [];
   }
 };
 
@@ -187,35 +189,75 @@ const Index = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<"all" | "support" | "financial" | "other">("all");
   const [editingScript, setEditingScript] = useState<string | null>(null);
+  const [scripts, setScripts] = useState<Script[]>([]);
+  const [onuModels, setOnuModels] = useState<OnuModel[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [protocolCount, setProtocolCount] = useState(0);
   
-  // Carregar scripts do localStorage (gerenciados pelo admin)
-  const scripts = getScriptsFromStorage();
-  const [scriptContents, setScriptContents] = useState<Record<string, string>>(
-    scripts.reduce((acc, script) => ({ ...acc, [script.id]: script.content }), {})
-  );
+  // Carregar dados quando o componente montar
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const [scriptsData, onusData] = await Promise.all([
+          getScriptsFromStorage(),
+          getONUsFromStorage()
+        ]);
+        setScripts(scriptsData);
+        setOnuModels(onusData);
+        
+        // Carregar contagem de protocolos
+        const count = await getUserProtocolCount(currentUser.name);
+        setProtocolCount(count);
+      } catch (error) {
+        console.error("Erro ao carregar dados:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    loadData();
+  }, []);
   
-  // Carregar ONUs do localStorage (gerenciadas pelo admin)
-  const onuModels = getONUsFromStorage();
+  const [scriptContents, setScriptContents] = useState<Record<string, string>>({});
+  
+  // Atualizar conteúdos dos scripts quando os scripts carregarem
+  useEffect(() => {
+    setScriptContents(
+      scripts.reduce((acc, script) => ({ ...acc, [script.id]: script.content }), {})
+    );
+  }, [scripts]);
 
   // Estados para protocolos
   const [protocolNumber, setProtocolNumber] = useState("");
   
   // Funções para gerenciar protocolos
-  const getProtocolsFromStorage = (): Protocol[] => {
-    const stored = localStorage.getItem("system_protocols");
-    return stored ? JSON.parse(stored) : [];
+  const getProtocolsFromStorage = async (): Promise<Protocol[]> => {
+    try {
+      const { getProtocolsFromStorage } = await import("@/services/googleSheets");
+      return await getProtocolsFromStorage();
+    } catch (error) {
+      console.error("Erro ao carregar protocolos:", error);
+      const stored = localStorage.getItem("protocols");
+      return stored ? JSON.parse(stored) : [];
+    }
   };
 
-  const saveProtocolsToStorage = (protocols: Protocol[]) => {
-    localStorage.setItem("system_protocols", JSON.stringify(protocols));
+  const saveProtocolsToStorage = async (protocols: Protocol[]) => {
+    try {
+      const { saveProtocolsToStorage } = await import("@/services/googleSheets");
+      await saveProtocolsToStorage(protocols);
+    } catch (error) {
+      console.error("Erro ao salvar protocolos:", error);
+      localStorage.setItem("protocols", JSON.stringify(protocols));
+    }
   };
 
-  const getUserProtocolCount = (agentName: string): number => {
-    const protocols = getProtocolsFromStorage();
+  const getUserProtocolCount = async (agentName: string): Promise<number> => {
+    const protocols = await getProtocolsFromStorage();
     return protocols.filter(p => p.agentName === agentName).length;
   };
 
-  const handleAddProtocol = () => {
+  const handleAddProtocol = async () => {
     if (!protocolNumber.trim()) {
       toast({
         title: "Erro",
@@ -225,7 +267,7 @@ const Index = () => {
       return;
     }
 
-    const protocols = getProtocolsFromStorage();
+    const protocols = await getProtocolsFromStorage();
     const protocolExists = protocols.some(p => p.number === protocolNumber.trim());
     
     if (protocolExists) {
@@ -245,8 +287,11 @@ const Index = () => {
     };
 
     const updatedProtocols = [...protocols, newProtocol];
-    saveProtocolsToStorage(updatedProtocols);
+    await saveProtocolsToStorage(updatedProtocols);
     setProtocolNumber("");
+    
+    // Atualizar contagem
+    setProtocolCount(await getUserProtocolCount(currentUser.name));
 
     toast({
       title: "Protocolo adicionado!",
@@ -377,7 +422,7 @@ const Index = () => {
             </TabsTrigger>
             <TabsTrigger value="protocols" className="flex items-center space-x-2">
               <Hash className="h-4 w-4" />
-              <span>Protocolos ({getUserProtocolCount(currentUser.name)})</span>
+              <span>Protocolos ({protocolCount})</span>
             </TabsTrigger>
             <TabsTrigger value="onu-models" className="flex items-center space-x-2">
               <Wifi className="h-4 w-4" />
@@ -588,7 +633,7 @@ const Index = () => {
                 <CardTitle className="flex items-center justify-between">
                   <span>Resumo de Protocolos</span>
                   <Badge variant="secondary" className="text-lg px-3 py-1">
-                    {getUserProtocolCount(currentUser.name)} protocolo(s)
+                    {protocolCount} protocolo(s)
                   </Badge>
                 </CardTitle>
                 <CardDescription>
@@ -601,7 +646,7 @@ const Index = () => {
                     Agente: <span className="font-semibold">{currentUser.name}</span>
                   </p>
                   <p className="text-2xl font-bold text-primary">
-                    {getUserProtocolCount(currentUser.name)} protocolos tratados
+                    {protocolCount} protocolos tratados
                   </p>
                 </div>
               </CardContent>
