@@ -42,7 +42,7 @@ export const GoogleSheetsConfig: React.FC<GoogleSheetsConfigProps> = ({ onConfig
     try {
       // Testar a API key fazendo uma requisição simples
       const testResponse = await fetch(
-        `https://sheets.googleapis.com/v4/spreadsheets/1eAgZ1p9eYEhOVMoNdNI4IClzJ5Zg04AI3ExPyO0AjfU?key=${apiKey}`
+        `https://sheets.googleapis.com/v4/spreadsheets/18FLQ3d0A6zbaWmGpVxQ5-MS5acC4f-5u2FTvPvWl0qM?key=${apiKey}`
       );
 
       if (testResponse.ok) {
@@ -130,7 +130,7 @@ export const GoogleSheetsConfig: React.FC<GoogleSheetsConfigProps> = ({ onConfig
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => window.open("https://docs.google.com/spreadsheets/d/1eAgZ1p9eYEhOVMoNdNI4IClzJ5Zg04AI3ExPyO0AjfU/edit?usp=sharing", "_blank")}
+                  onClick={() => window.open("https://docs.google.com/spreadsheets/d/18FLQ3d0A6zbaWmGpVxQ5-MS5acC4f-5u2FTvPvWl0qM/edit?usp=sharing", "_blank")}
                 >
                   <ExternalLink className="h-4 w-4 mr-2" />
                   Abrir Planilha
