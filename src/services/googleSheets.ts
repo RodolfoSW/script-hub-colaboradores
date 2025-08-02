@@ -36,9 +36,25 @@ interface Protocol {
 
 const SPREADSHEET_ID = "18FLQ3d0A6zbaWmGpVxQ5-MS5acC4f-5u2FTvPvWl0qM";
 
-// Função para obter a API key do localStorage
-function getApiKey(): string | null {
-  return localStorage.getItem("google_sheets_api_key");
+// Função para fazer chamadas para a Edge Function do Supabase
+async function callSupabaseFunction(action: string, data: any = {}) {
+  const response = await fetch('/functions/v1/google-sheets', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      action,
+      ...data
+    })
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.error || 'Erro na comunicação com o backend');
+  }
+
+  return response.json();
 }
 
 // Colunas da planilha conforme especificado pelo usuário
@@ -66,42 +82,11 @@ const COLUMNS = {
   SCRIPT_CHANGES: 20  // de Alterações nos Scripts
 };
 
-// Função para fazer requisições para a Google Sheets API
-async function makeGoogleSheetsRequest(endpoint: string, options: RequestInit = {}) {
-  const apiKey = getApiKey();
-  if (!apiKey) {
-    throw new Error('API Key não configurada');
-  }
-  
-  const baseUrl = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}`;
-  const url = `${baseUrl}${endpoint}${endpoint.includes('?') ? '&' : '?'}key=${apiKey}`;
-  
-  console.log('Google Sheets API Request:', url);
-  
-  const response = await fetch(url, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers,
-    },
-  });
-  
-  console.log('Google Sheets API Response Status:', response.status);
-  
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error('Google Sheets API Error:', errorText);
-    throw new Error(`Google Sheets API error: ${response.statusText} - ${errorText}`);
-  }
-  
-  return response.json();
-}
-
 // Função para ler dados da planilha
 async function readSheetData(range: string = 'A:U') {
   try {
-    const response = await makeGoogleSheetsRequest(`/values/${range}`);
-    return response.values || [];
+    const response = await callSupabaseFunction('read', { range });
+    return response.data || [];
   } catch (error) {
     console.error('Erro ao ler dados da planilha:', error);
     return [];
@@ -111,13 +96,7 @@ async function readSheetData(range: string = 'A:U') {
 // Função para escrever dados na planilha
 async function writeSheetData(range: string, values: any[][]) {
   try {
-    const response = await makeGoogleSheetsRequest(`/values/${range}?valueInputOption=USER_ENTERED`, {
-      method: 'PUT',
-      body: JSON.stringify({
-        values: values
-      })
-    });
-    return response;
+    await callSupabaseFunction('write', { range, values });
   } catch (error) {
     console.error('Erro ao escrever dados na planilha:', error);
     throw error;
@@ -127,13 +106,7 @@ async function writeSheetData(range: string, values: any[][]) {
 // Função para adicionar nova linha na planilha
 async function appendSheetData(values: any[]) {
   try {
-    const response = await makeGoogleSheetsRequest('/values/A:U:append?valueInputOption=USER_ENTERED', {
-      method: 'POST',
-      body: JSON.stringify({
-        values: [values]
-      })
-    });
-    return response;
+    await callSupabaseFunction('append', { values });
   } catch (error) {
     console.error('Erro ao adicionar dados na planilha:', error);
     throw error;
