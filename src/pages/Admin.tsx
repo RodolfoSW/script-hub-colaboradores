@@ -216,6 +216,15 @@ const Admin = () => {
     const apiKey = localStorage.getItem("google_sheets_api_key");
     if (apiKey) {
       setGoogleSheetsConfigured(true);
+    } else {
+      // Configurar automaticamente a API key fornecida pelo usuário
+      const providedApiKey = "AIzaSyADbmrvbXYkGzMBIfOfR6GHCyQiAKCSpRg";
+      localStorage.setItem("google_sheets_api_key", providedApiKey);
+      setGoogleSheetsConfigured(true);
+      toast({
+        title: "Google Sheets configurado!",
+        description: "API key configurada automaticamente.",
+      });
     }
   }, []);
 
