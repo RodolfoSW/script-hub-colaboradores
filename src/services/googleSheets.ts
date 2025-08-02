@@ -34,7 +34,7 @@ interface Protocol {
   timestamp: string;
 }
 
-const SPREADSHEET_ID = "1eAgZ1p9eYEhOVMoNdNI4IClzJ5Zg04AI3ExPyO0AjfU";
+const SPREADSHEET_ID = "18FLQ3d0A6zbaWmGpVxQ5-MS5acC4f-5u2FTvPvWl0qM";
 
 // Função para obter a API key do localStorage
 function getApiKey(): string | null {
@@ -76,6 +76,8 @@ async function makeGoogleSheetsRequest(endpoint: string, options: RequestInit = 
   const baseUrl = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}`;
   const url = `${baseUrl}${endpoint}${endpoint.includes('?') ? '&' : '?'}key=${apiKey}`;
   
+  console.log('Google Sheets API Request:', url);
+  
   const response = await fetch(url, {
     ...options,
     headers: {
@@ -84,8 +86,12 @@ async function makeGoogleSheetsRequest(endpoint: string, options: RequestInit = 
     },
   });
   
+  console.log('Google Sheets API Response Status:', response.status);
+  
   if (!response.ok) {
-    throw new Error(`Google Sheets API error: ${response.statusText}`);
+    const errorText = await response.text();
+    console.error('Google Sheets API Error:', errorText);
+    throw new Error(`Google Sheets API error: ${response.statusText} - ${errorText}`);
   }
   
   return response.json();
