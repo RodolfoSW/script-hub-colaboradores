@@ -34,7 +34,7 @@ interface Protocol {
   timestamp: string;
 }
 
-const SPREADSHEET_ID = "18FLQ3d0A6zbaWmGpVxQ5-MS5acC4f-5u2FTvPvWl0qM";
+const SPREADSHEET_ID = "1eAgZ1p9eYEhOVMoNdNI4IClzJ5Zg04AI3ExPyO0AjfU";
 
 // Função para fazer chamadas para a Edge Function do Supabase
 async function callSupabaseFunction(action: string, data: any = {}) {

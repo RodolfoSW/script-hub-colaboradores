@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { JWT } from "https://deno.land/x/djwt@v2.8/mod.ts"
 
@@ -21,7 +20,7 @@ interface ServiceAccountCredentials {
   universe_domain: string;
 }
 
-const SPREADSHEET_ID = "18FLQ3d0A6zbaWmGpVxQ5-MS5acC4f-5u2FTvPvWl0qM";
+const SPREADSHEET_ID = "1eAgZ1p9eYEhOVMoNdNI4IClzJ5Zg04AI3ExPyO0AjfU";
 
 async function getAccessToken(): Promise<string> {
   console.log('Iniciando processo de autenticação...');
