@@ -1,3 +1,4 @@
+
 interface User {
   id: string;
   username: string;
@@ -63,31 +64,6 @@ async function callSupabaseFunction(action: string, data: any = {}) {
   return result;
 }
 
-// Colunas da planilha conforme especificado pelo usuário
-const COLUMNS = {
-  USERNAME: 0,        // Nome de usuário
-  FULL_NAME: 1,       // Nome completo
-  PASSWORD: 2,        // Senha
-  ROLE: 3,            // Cargo
-  SCRIPT_TITLE: 4,    // Título(script)
-  SCRIPT_CATEGORY: 5, // Categoria(script)
-  SCRIPT_CONTENT: 6,  // Conteúdo do Script
-  ONU_MODEL: 7,       // Modelo(ONU)
-  ONU_BRAND: 8,       // Marca(ONU)
-  ONU_MANUAL_LINK: 9, // Link do Manual (ONU)
-  ONU_IMAGE_1: 10,    // Imagem 1(ONU)
-  ONU_IMAGE_2: 11,    // Imagem 2(ONU)
-  ONU_IMAGE_3: 12,    // Imagem 3(ONU)
-  ONU_IMAGE_4: 13,    // Imagem 4(ONU)
-  ONU_DESC_1: 14,     // Descrição 1(ONU)
-  ONU_DESC_2: 15,     // Descrição 2(ONU)
-  ONU_DESC_3: 16,     // Descrição 3(ONU)
-  ONU_DESC_4: 17,     // Descrição 4(ONU)
-  PROTOCOLS: 18,      // Protocolos
-  HISTORY: 19,        // Histórico
-  SCRIPT_CHANGES: 20  // de Alterações nos Scripts
-};
-
 // Função para ler dados da planilha
 async function readSheetData(range: string = 'A:U') {
   try {
@@ -113,14 +89,63 @@ async function writeSheetData(range: string, values: any[][]) {
   }
 }
 
-// Função para adicionar nova linha na planilha
-async function appendSheetData(values: any[]) {
+// Função para limpar a planilha e reescrever todos os dados
+async function clearAndWriteAllData(users: User[], scripts: Script[], onus: ONU[], protocols: Protocol[]) {
   try {
-    console.log('Adicionando dados na planilha:', values);
-    await callSupabaseFunction('append', { values });
-    console.log('Dados adicionados com sucesso');
+    console.log('Limpando e reescrevendo todos os dados...');
+    
+    const allRows: any[][] = [];
+    
+    // Cabeçalho
+    allRows.push([
+      'Tipo', 'ID', 'Nome de usuário', 'Nome completo', 'Senha', 'Cargo', 
+      'Título(script)', 'Categoria(script)', 'Conteúdo do Script', 
+      'Modelo(ONU)', 'Marca(ONU)', 'Link do Manual (ONU)', 
+      'Imagens(ONU)', 'Descrições(ONU)', 'Número Protocolo', 'Nome Agente', 
+      'Timestamp', 'Tags', 'Criado em', 'Dados JSON'
+    ]);
+    
+    // Adicionar usuários
+    users.forEach(user => {
+      allRows.push([
+        'USER', user.id, user.username, user.name, user.password, user.role,
+        '', '', '', '', '', '', '', '', '', '', '', '', user.createdAt, ''
+      ]);
+    });
+    
+    // Adicionar scripts
+    scripts.forEach(script => {
+      allRows.push([
+        'SCRIPT', script.id, '', '', '', '', script.title, script.category, 
+        script.content, '', '', '', '', '', '', '', '', 
+        script.tags.join(','), script.createdAt, ''
+      ]);
+    });
+    
+    // Adicionar ONUs
+    onus.forEach(onu => {
+      allRows.push([
+        'ONU', onu.id, '', '', '', '', '', '', '', onu.model, onu.brand, 
+        onu.manualLink || '', JSON.stringify(onu.images), 
+        JSON.stringify(onu.descriptions), '', '', '', '', onu.createdAt, ''
+      ]);
+    });
+    
+    // Adicionar protocolos
+    protocols.forEach(protocol => {
+      allRows.push([
+        'PROTOCOL', protocol.id, '', '', '', '', '', '', '', '', '', '', 
+        '', '', protocol.number, protocol.agentName, protocol.timestamp, 
+        '', '', ''
+      ]);
+    });
+    
+    // Escrever tudo de uma vez
+    await writeSheetData('A:T', allRows);
+    console.log('Todos os dados foram escritos com sucesso');
+    
   } catch (error) {
-    console.error('Erro ao adicionar dados na planilha:', error);
+    console.error('Erro ao limpar e escrever dados:', error);
     throw error;
   }
 }
@@ -136,137 +161,64 @@ function parseSheetDataToObjects(sheetData: any[][]): { users: User[], scripts: 
   const dataRows = sheetData.slice(1);
   
   dataRows.forEach((row, index) => {
-    // Processar usuários
-    if (row[COLUMNS.USERNAME] && row[COLUMNS.FULL_NAME]) {
+    const type = row[0]; // Primeiro campo indica o tipo
+    
+    if (type === 'USER' && row[2] && row[3]) { // username e name
       users.push({
-        id: (index + 1).toString(),
-        username: row[COLUMNS.USERNAME] || '',
-        name: row[COLUMNS.FULL_NAME] || '',
-        password: row[COLUMNS.PASSWORD] || '',
-        role: row[COLUMNS.ROLE] || '',
-        createdAt: new Date().toISOString().split('T')[0]
+        id: row[1] || (index + 1).toString(),
+        username: row[2] || '',
+        name: row[3] || '',
+        password: row[4] || '',
+        role: row[5] || '',
+        createdAt: row[18] || new Date().toISOString().split('T')[0]
       });
     }
     
-    // Processar scripts
-    if (row[COLUMNS.SCRIPT_TITLE] && row[COLUMNS.SCRIPT_CONTENT]) {
+    if (type === 'SCRIPT' && row[6] && row[8]) { // title e content
       scripts.push({
-        id: (index + 1).toString(),
-        title: row[COLUMNS.SCRIPT_TITLE] || '',
-        description: row[COLUMNS.SCRIPT_TITLE] || '',
-        category: (row[COLUMNS.SCRIPT_CATEGORY] || 'support') as "support" | "financial" | "other",
-        content: row[COLUMNS.SCRIPT_CONTENT] || '',
-        tags: [],
-        createdAt: new Date().toISOString().split('T')[0]
+        id: row[1] || (index + 1).toString(),
+        title: row[6] || '',
+        description: row[6] || '',
+        category: (row[7] || 'support') as "support" | "financial" | "other",
+        content: row[8] || '',
+        tags: row[17] ? row[17].split(',') : [],
+        createdAt: row[18] || new Date().toISOString().split('T')[0]
       });
     }
     
-    // Processar ONUs
-    if (row[COLUMNS.ONU_MODEL] && row[COLUMNS.ONU_BRAND]) {
-      const images = [
-        row[COLUMNS.ONU_IMAGE_1],
-        row[COLUMNS.ONU_IMAGE_2],
-        row[COLUMNS.ONU_IMAGE_3],
-        row[COLUMNS.ONU_IMAGE_4]
-      ].filter(img => img);
+    if (type === 'ONU' && row[9] && row[10]) { // model e brand
+      let images: string[] = [];
+      let descriptions: string[] = [];
       
-      const descriptions = [
-        row[COLUMNS.ONU_DESC_1],
-        row[COLUMNS.ONU_DESC_2],
-        row[COLUMNS.ONU_DESC_3],
-        row[COLUMNS.ONU_DESC_4]
-      ].filter(desc => desc);
+      try {
+        if (row[12]) images = JSON.parse(row[12]);
+        if (row[13]) descriptions = JSON.parse(row[13]);
+      } catch (error) {
+        console.warn('Erro ao parsear dados da ONU:', error);
+      }
       
       onus.push({
-        id: (index + 1).toString(),
-        model: row[COLUMNS.ONU_MODEL] || '',
-        brand: row[COLUMNS.ONU_BRAND] || '',
-        images,
-        descriptions,
-        manualLink: row[COLUMNS.ONU_MANUAL_LINK] || undefined,
-        createdAt: new Date().toISOString().split('T')[0]
+        id: row[1] || (index + 1).toString(),
+        model: row[9] || '',
+        brand: row[10] || '',
+        images: images,
+        descriptions: descriptions,
+        manualLink: row[11] || undefined,
+        createdAt: row[18] || new Date().toISOString().split('T')[0]
       });
     }
     
-    // Processar protocolos
-    if (row[COLUMNS.PROTOCOLS]) {
-      try {
-        const protocolsData = JSON.parse(row[COLUMNS.PROTOCOLS]);
-        if (Array.isArray(protocolsData)) {
-          protocols.push(...protocolsData);
-        }
-      } catch (error) {
-        console.warn('Erro ao parsear protocolos:', error);
-      }
+    if (type === 'PROTOCOL' && row[14]) { // number
+      protocols.push({
+        id: row[1] || (index + 1).toString(),
+        number: row[14] || '',
+        agentName: row[15] || '',
+        timestamp: row[16] || new Date().toISOString()
+      });
     }
   });
   
   return { users, scripts, onus, protocols };
-}
-
-// Função para converter objetos para dados da planilha
-function convertObjectsToSheetData(users: User[], scripts: Script[], onus: ONU[], protocols: Protocol[]): any[][] {
-  const rows: any[][] = [];
-  
-  // Criar um mapa para organizar os dados por linha
-  const dataMap = new Map<string, any[]>();
-  
-  // Adicionar usuários
-  users.forEach(user => {
-    const rowKey = `user_${user.id}`;
-    dataMap.set(rowKey, new Array(21).fill(''));
-    const row = dataMap.get(rowKey)!;
-    row[COLUMNS.USERNAME] = user.username;
-    row[COLUMNS.FULL_NAME] = user.name;
-    row[COLUMNS.PASSWORD] = user.password;
-    row[COLUMNS.ROLE] = user.role;
-  });
-  
-  // Adicionar scripts
-  scripts.forEach(script => {
-    const rowKey = `script_${script.id}`;
-    if (!dataMap.has(rowKey)) {
-      dataMap.set(rowKey, new Array(21).fill(''));
-    }
-    const row = dataMap.get(rowKey)!;
-    row[COLUMNS.SCRIPT_TITLE] = script.title;
-    row[COLUMNS.SCRIPT_CATEGORY] = script.category;
-    row[COLUMNS.SCRIPT_CONTENT] = script.content;
-  });
-  
-  // Adicionar ONUs
-  onus.forEach(onu => {
-    const rowKey = `onu_${onu.id}`;
-    if (!dataMap.has(rowKey)) {
-      dataMap.set(rowKey, new Array(21).fill(''));
-    }
-    const row = dataMap.get(rowKey)!;
-    row[COLUMNS.ONU_MODEL] = onu.model;
-    row[COLUMNS.ONU_BRAND] = onu.brand;
-    row[COLUMNS.ONU_MANUAL_LINK] = onu.manualLink || '';
-    
-    // Adicionar imagens
-    onu.images.forEach((image, index) => {
-      if (index < 4) {
-        row[COLUMNS.ONU_IMAGE_1 + index] = image;
-      }
-    });
-    
-    // Adicionar descrições
-    onu.descriptions.forEach((desc, index) => {
-      if (index < 4) {
-        row[COLUMNS.ONU_DESC_1 + index] = desc;
-      }
-    });
-  });
-  
-  // Adicionar protocolos como JSON na primeira linha disponível
-  if (protocols.length > 0) {
-    const firstRow = Array.from(dataMap.values())[0] || new Array(21).fill('');
-    firstRow[COLUMNS.PROTOCOLS] = JSON.stringify(protocols);
-  }
-  
-  return Array.from(dataMap.values());
 }
 
 // Funções principais para substituir o localStorage
@@ -292,25 +244,19 @@ export async function getUsersFromStorage(): Promise<User[]> {
 export async function saveUsersToStorage(users: User[]): Promise<void> {
   try {
     console.log('Salvando usuários no Google Sheets...');
+    
+    // Carregar dados existentes
     const sheetData = await readSheetData();
     const { scripts, onus, protocols } = parseSheetDataToObjects(sheetData);
-    const newSheetData = convertObjectsToSheetData(users, scripts, onus, protocols);
     
-    // Adicionar cabeçalho
-    const header = [
-      'Nome de usuário', 'Nome completo', 'Senha', 'Cargo', 'Título(script)', 
-      'Categoria(script)', 'Conteúdo do Script', 'Modelo(ONU)', 'Marca(ONU)', 
-      'Link do Manual (ONU)', 'Imagem 1(ONU)', 'Imagem 2(ONU)', 'Imagem 3(ONU)', 
-      'Imagem 4(ONU)', 'Descrição 1(ONU)', 'Descrição 2(ONU)', 'Descrição 3(ONU)', 
-      'Descrição 4(ONU)', 'Protocolos', 'Histórico', 'de Alterações nos Scripts'
-    ];
-    
-    await writeSheetData('A:U', [header, ...newSheetData]);
+    // Reescrever tudo
+    await clearAndWriteAllData(users, scripts, onus, protocols);
     console.log('Usuários salvos com sucesso');
   } catch (error) {
     console.error('Erro ao salvar usuários:', error);
     // Fallback para localStorage
     localStorage.setItem("system_users", JSON.stringify(users));
+    throw error;
   }
 }
 
@@ -320,7 +266,7 @@ export async function getScriptsFromStorage(): Promise<Script[]> {
     const sheetData = await readSheetData();
     const { scripts } = parseSheetDataToObjects(sheetData);
     console.log('Scripts carregados:', scripts.length);
-    return scripts.length > 0 ? scripts : [];
+    return scripts;
   } catch (error) {
     console.error('Erro ao carregar scripts:', error);
     // Fallback para localStorage
@@ -332,25 +278,19 @@ export async function getScriptsFromStorage(): Promise<Script[]> {
 export async function saveScriptsToStorage(scripts: Script[]): Promise<void> {
   try {
     console.log('Salvando scripts no Google Sheets...');
+    
+    // Carregar dados existentes
     const sheetData = await readSheetData();
     const { users, onus, protocols } = parseSheetDataToObjects(sheetData);
-    const newSheetData = convertObjectsToSheetData(users, scripts, onus, protocols);
     
-    // Adicionar cabeçalho
-    const header = [
-      'Nome de usuário', 'Nome completo', 'Senha', 'Cargo', 'Título(script)', 
-      'Categoria(script)', 'Conteúdo do Script', 'Modelo(ONU)', 'Marca(ONU)', 
-      'Link do Manual (ONU)', 'Imagem 1(ONU)', 'Imagem 2(ONU)', 'Imagem 3(ONU)', 
-      'Imagem 4(ONU)', 'Descrição 1(ONU)', 'Descrição 2(ONU)', 'Descrição 3(ONU)', 
-      'Descrição 4(ONU)', 'Protocolos', 'Histórico', 'de Alterações nos Scripts'
-    ];
-    
-    await writeSheetData('A:U', [header, ...newSheetData]);
+    // Reescrever tudo
+    await clearAndWriteAllData(users, scripts, onus, protocols);
     console.log('Scripts salvos com sucesso');
   } catch (error) {
     console.error('Erro ao salvar scripts:', error);
     // Fallback para localStorage
     localStorage.setItem("system_scripts", JSON.stringify(scripts));
+    throw error;
   }
 }
 
@@ -372,25 +312,19 @@ export async function getONUsFromStorage(): Promise<ONU[]> {
 export async function saveONUsToStorage(onus: ONU[]): Promise<void> {
   try {
     console.log('Salvando ONUs no Google Sheets...');
+    
+    // Carregar dados existentes
     const sheetData = await readSheetData();
     const { users, scripts, protocols } = parseSheetDataToObjects(sheetData);
-    const newSheetData = convertObjectsToSheetData(users, scripts, onus, protocols);
     
-    // Adicionar cabeçalho
-    const header = [
-      'Nome de usuário', 'Nome completo', 'Senha', 'Cargo', 'Título(script)', 
-      'Categoria(script)', 'Conteúdo do Script', 'Modelo(ONU)', 'Marca(ONU)', 
-      'Link do Manual (ONU)', 'Imagem 1(ONU)', 'Imagem 2(ONU)', 'Imagem 3(ONU)', 
-      'Imagem 4(ONU)', 'Descrição 1(ONU)', 'Descrição 2(ONU)', 'Descrição 3(ONU)', 
-      'Descrição 4(ONU)', 'Protocolos', 'Histórico', 'de Alterações nos Scripts'
-    ];
-    
-    await writeSheetData('A:U', [header, ...newSheetData]);
+    // Reescrever tudo
+    await clearAndWriteAllData(users, scripts, onus, protocols);
     console.log('ONUs salvos com sucesso');
   } catch (error) {
     console.error('Erro ao salvar ONUs:', error);
     // Fallback para localStorage
     localStorage.setItem("system_onus", JSON.stringify(onus));
+    throw error;
   }
 }
 
@@ -412,25 +346,19 @@ export async function getProtocolsFromStorage(): Promise<Protocol[]> {
 export async function saveProtocolsToStorage(protocols: Protocol[]): Promise<void> {
   try {
     console.log('Salvando protocolos no Google Sheets...');
+    
+    // Carregar dados existentes
     const sheetData = await readSheetData();
     const { users, scripts, onus } = parseSheetDataToObjects(sheetData);
-    const newSheetData = convertObjectsToSheetData(users, scripts, onus, protocols);
     
-    // Adicionar cabeçalho
-    const header = [
-      'Nome de usuário', 'Nome completo', 'Senha', 'Cargo', 'Título(script)', 
-      'Categoria(script)', 'Conteúdo do Script', 'Modelo(ONU)', 'Marca(ONU)', 
-      'Link do Manual (ONU)', 'Imagem 1(ONU)', 'Imagem 2(ONU)', 'Imagem 3(ONU)', 
-      'Imagem 4(ONU)', 'Descrição 1(ONU)', 'Descrição 2(ONU)', 'Descrição 3(ONU)', 
-      'Descrição 4(ONU)', 'Protocolos', 'Histórico', 'de Alterações nos Scripts'
-    ];
-    
-    await writeSheetData('A:U', [header, ...newSheetData]);
+    // Reescrever tudo
+    await clearAndWriteAllData(users, scripts, onus, protocols);
     console.log('Protocolos salvos com sucesso');
   } catch (error) {
     console.error('Erro ao salvar protocolos:', error);
     // Fallback para localStorage
     localStorage.setItem("protocols", JSON.stringify(protocols));
+    throw error;
   }
 }
 
@@ -438,20 +366,8 @@ export async function getScriptLogsFromStorage(): Promise<any[]> {
   try {
     console.log('Carregando logs do Google Sheets...');
     const sheetData = await readSheetData();
-    // Buscar logs na coluna de histórico
-    const logs = sheetData.slice(1).map(row => {
-      if (row[COLUMNS.HISTORY]) {
-        try {
-          return JSON.parse(row[COLUMNS.HISTORY]);
-        } catch (error) {
-          return [];
-        }
-      }
-      return [];
-    }).flat();
-    
-    console.log('Logs carregados:', logs.length);
-    return logs;
+    // Por enquanto, retornar array vazio já que logs não estão implementados na nova estrutura
+    return [];
   } catch (error) {
     console.error('Erro ao carregar logs:', error);
     // Fallback para localStorage
