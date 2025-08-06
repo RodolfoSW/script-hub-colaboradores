@@ -34,6 +34,8 @@ interface Protocol {
   timestamp: string;
 }
 
+import { supabase } from './supabase';
+
 const SPREADSHEET_ID = "1eAgZ1p9eYEhOVMoNdNI4IClzJ5Zg04AI3ExPyO0AjfU";
 
 // Função para fazer chamadas para a Edge Function do Supabase
@@ -41,44 +43,20 @@ async function callSupabaseFunction(action: string, data: any = {}) {
   console.log('🔄 Iniciando chamada para função do Supabase');
   console.log('📋 Ação:', action);
   console.log('📊 Dados enviados:', data);
-  console.log('📍 URL da função:', 'https://kxfqbfcqfczfkwcxxngd.supabase.co/functions/v1/google-sheets');
   
   try {
-    const response = await fetch('https://kxfqbfcqfczfkwcxxngd.supabase.co/functions/v1/google-sheets', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt4ZnFiZmNxZmN6ZmtXY3h4bmdkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzM0MjI1MjUsImV4cCI6MjA0ODk5ODUyNX0.CrJw9t9A1djV02Hpkk8yFJhMLhvuMVRmKQUZzEhgXx4'
-      },
-      body: JSON.stringify({
+    const { data: result, error } = await supabase.functions.invoke('google-sheets', {
+      body: {
         action,
         ...data
-      })
+      }
     });
 
-    console.log('📡 Status da resposta HTTP:', response.status, response.statusText);
-    console.log('🌐 Headers da resposta:', Object.fromEntries(response.headers.entries()));
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('❌ ERRO - Resposta não ok:', {
-        status: response.status,
-        statusText: response.statusText,
-        errorText: errorText
-      });
-      
-      // Tentar parsear como JSON se possível
-      try {
-        const errorJson = JSON.parse(errorText);
-        console.error('❌ ERRO JSON:', errorJson);
-        throw new Error(`Erro ${response.status}: ${errorJson.error || errorText}`);
-      } catch (parseError) {
-        console.error('❌ ERRO - Não foi possível parsear erro como JSON:', parseError);
-        throw new Error(`Erro ${response.status}: ${errorText}`);
-      }
+    if (error) {
+      console.error('❌ ERRO - Supabase function error:', error);
+      throw new Error(`Erro da função: ${error.message}`);
     }
 
-    const result = await response.json();
     console.log('✅ Resposta recebida com sucesso:', result);
     return result;
     
@@ -88,11 +66,6 @@ async function callSupabaseFunction(action: string, data: any = {}) {
       message: fetchError.message,
       stack: fetchError.stack
     });
-    
-    // Verificar se é erro de rede
-    if (fetchError.name === 'TypeError' && fetchError.message.includes('fetch')) {
-      console.error('🌐 Erro de conectividade - Verifique a conexão com a internet');
-    }
     
     throw fetchError;
   }
