@@ -10,7 +10,6 @@ import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { UserPlus, LogOut, History, User, Edit, Calendar, Trash2, Save, X, FileText, Plus, Copy, Hash, Router, Image, Link } from "lucide-react";
-import { GoogleSheetsConfig } from "@/components/GoogleSheetsConfig";
 import {
   getUsersFromStorage,
   saveUsersToStorage,
@@ -161,15 +160,12 @@ const Admin = () => {
   
   // Estados para controlar carregamento
   const [isLoading, setIsLoading] = useState(false);
-  const [googleSheetsConfigured, setGoogleSheetsConfigured] = useState(false);
   
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Função para carregar dados do Google Sheets
+  // Função para carregar dados do Supabase
   const loadData = async () => {
-    if (!googleSheetsConfigured) return;
-    
     setIsLoading(true);
     try {
       const [usersData, scriptsData, onusData, logsData] = await Promise.all([
@@ -206,32 +202,10 @@ const Admin = () => {
     }
   };
 
-  // Carregar dados quando o componente for montado ou quando Google Sheets for configurado
+  // Carregar dados quando o componente for montado
   useEffect(() => {
     loadData();
-  }, [googleSheetsConfigured]);
-
-  // Verificar se Google Sheets já está configurado
-  useEffect(() => {
-    const apiKey = localStorage.getItem("google_sheets_api_key");
-    if (apiKey) {
-      setGoogleSheetsConfigured(true);
-    } else {
-      // Configurar automaticamente a API key fornecida pelo usuário
-      const providedApiKey = "AIzaSyADbmrvbXYkGzMBIfOfR6GHCyQiAKCSpRg";
-      localStorage.setItem("google_sheets_api_key", providedApiKey);
-      setGoogleSheetsConfigured(true);
-      toast({
-        title: "Google Sheets configurado!",
-        description: "API key configurada automaticamente.",
-      });
-    }
   }, []);
-
-  const handleGoogleSheetsConfigured = (apiKey: string) => {
-    setGoogleSheetsConfigured(true);
-    loadData();
-  };
 
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -67,7 +67,7 @@ const convertGoogleDriveLink = (url: string): string => {
   return url;
 };
 
-// Função para carregar ONUs do Google Sheets (gerenciadas pelo admin)
+// Função para carregar ONUs do Supabase (gerenciadas pelo admin)
 const getONUsFromStorage = async (): Promise<OnuModel[]> => {
   try {
     const { getONUsFromStorage } = await import("@/services/googleSheets");
@@ -80,8 +80,18 @@ const getONUsFromStorage = async (): Promise<OnuModel[]> => {
   }
 };
 
-// Função para carregar scripts do localStorage (gerenciados pelo admin)
-const getScriptsFromStorage = (): Script[] => {
+// Função para carregar scripts do Supabase (gerenciados pelo admin)
+const getScriptsFromStorage = async (): Promise<Script[]> => {
+  try {
+    const { getScriptsFromStorage } = await import("@/services/googleSheets");
+    return await getScriptsFromStorage();
+  } catch (error) {
+    console.error("Erro ao carregar scripts:", error);
+    return getScriptsFromLocalStorage();
+  }
+};
+
+const getScriptsFromLocalStorage = (): Script[] => {
   try {
     const stored = localStorage.getItem("system_scripts");
     if (stored) {
