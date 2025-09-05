@@ -7,11 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useToast } from "@/hooks/use-toast";
 import { User, Lock } from "lucide-react";
 
-// Função para buscar usuários do localStorage
-const getUsersFromStorage = () => {
-  const stored = localStorage.getItem("system_users");
-  return stored ? JSON.parse(stored) : [];
-};
+import { getUsersFromStorage } from "@/services/googleSheets";
 
 const Login = () => {
   const [username, setUsername] = useState("");
@@ -36,28 +32,37 @@ const Login = () => {
     }
 
     // Verificar usuários criados no sistema
-    const systemUsers = getUsersFromStorage();
-    const foundUser = systemUsers.find((user: any) => 
-      user.username === username && user.password === password
-    );
+    try {
+      const systemUsers = await getUsersFromStorage();
+      const foundUser = systemUsers.find((user: any) => 
+        user.username === username && user.password === password
+      );
 
-    if (foundUser) {
+      if (foundUser) {
+        toast({
+          title: "Login realizado com sucesso!",
+          description: `Bem-vindo, ${foundUser.name}!`,
+        });
+        // Salvar informações do usuário logado
+        localStorage.setItem("current_user", JSON.stringify({
+          id: foundUser.id,
+          username: foundUser.username,
+          name: foundUser.name,
+          role: foundUser.role
+        }));
+        navigate("/portal");
+      } else {
+        toast({
+          title: "Erro no login",
+          description: "Usuário ou senha incorretos.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Erro ao buscar usuários:", error);
       toast({
-        title: "Login realizado com sucesso!",
-        description: `Bem-vindo, ${foundUser.name}!`,
-      });
-      // Salvar informações do usuário logado
-      localStorage.setItem("current_user", JSON.stringify({
-        id: foundUser.id,
-        username: foundUser.username,
-        name: foundUser.name,
-        role: foundUser.role
-      }));
-      navigate("/portal");
-    } else {
-      toast({
-        title: "Erro no login",
-        description: "Usuário ou senha incorretos.",
+        title: "Erro no sistema",
+        description: "Não foi possível verificar as credenciais.",
         variant: "destructive",
       });
     }
