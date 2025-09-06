@@ -9,6 +9,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/components/auth/AuthProvider";
+import { supabase } from "@/integrations/supabase/client";
 import { 
   Search, 
   Headphones, 
@@ -176,25 +178,35 @@ DESCONEXÃO AUTOMÁTICA, ALARME AMS PENDENTE: , ont-gen-rx-lwarn, TIPO ALARME: A
 const Index = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user, loading, signOut } = useAuth();
   
-  // Verificar se o usuário está autenticado
-  const getCurrentUser = () => {
-    try {
-      const stored = localStorage.getItem("current_user");
-      return stored ? JSON.parse(stored) : null;
-    } catch (error) {
-      console.error("Erro ao carregar usuário:", error);
-      return null;
+  // Estado para profile do usuário
+  const [userProfile, setUserProfile] = useState<any>(null);
+  
+  // Redirecionar para auth se não estiver autenticado
+  useEffect(() => {
+    if (!loading && !user) {
+      navigate("/auth");
     }
-  };
-  
-  const currentUser = getCurrentUser();
-  
-  // Redirecionar para login se não estiver autenticado
-  if (!currentUser) {
-    navigate("/");
-    return null;
-  }
+  }, [user, loading, navigate]);
+
+  // Carregar perfil do usuário
+  useEffect(() => {
+    const loadUserProfile = async () => {
+      if (user) {
+        const { data } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('user_id', user.id)
+          .single();
+        setUserProfile(data);
+      }
+    };
+    
+    if (user) {
+      loadUserProfile();
+    }
+  }, [user]);
   
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<"all" | "support" | "financial" | "other">("all");
@@ -203,6 +215,11 @@ const Index = () => {
   const [onuModels, setOnuModels] = useState<OnuModel[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [protocolCount, setProtocolCount] = useState(0);
+
+  // Se ainda estiver carregando ou não tiver usuário, não renderizar
+  if (loading || !user || !userProfile) {
+    return <div className="flex items-center justify-center min-h-screen">Carregando...</div>;
+  }
   
   // Carregar dados quando o componente montar
   useEffect(() => {
@@ -216,7 +233,7 @@ const Index = () => {
         setOnuModels(onusData);
         
         // Carregar contagem de protocolos
-        const count = await getUserProtocolCount(currentUser.name);
+        const count = await getUserProtocolCount(userProfile.full_name);
         setProtocolCount(count);
       } catch (error) {
         console.error("Erro ao carregar dados:", error);
@@ -292,7 +309,7 @@ const Index = () => {
     const newProtocol: Protocol = {
       id: Date.now().toString(),
       number: protocolNumber.trim(),
-      agentName: currentUser.name,
+      agentName: userProfile.full_name,
       timestamp: new Date().toLocaleString('pt-BR')
     };
 
@@ -301,7 +318,7 @@ const Index = () => {
     setProtocolNumber("");
     
     // Atualizar contagem
-    setProtocolCount(await getUserProtocolCount(currentUser.name));
+    setProtocolCount(await getUserProtocolCount(userProfile.full_name));
 
     toast({
       title: "Protocolo adicionado!",
@@ -309,13 +326,12 @@ const Index = () => {
     });
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem("current_user");
+  const handleLogout = async () => {
+    await signOut();
     toast({
       title: "Logout realizado",
       description: "Até logo!",
     });
-    navigate("/");
   };
 
   const filteredScripts = scripts.filter(script => {
@@ -329,8 +345,7 @@ const Index = () => {
   });
 
   const copyToClipboard = (text: string) => {
-    const currentUser = getCurrentUser();
-    const userInfo = `Agente: ${currentUser.name}${currentUser.role ? ` - ${currentUser.role}` : ''}\n\n`;
+    const userInfo = `Agente: ${userProfile.full_name}${userProfile.role ? ` - ${userProfile.role}` : ''}\n\n`;
     const fullContent = userInfo + text;
     navigator.clipboard.writeText(fullContent);
     
@@ -348,11 +363,10 @@ const Index = () => {
     const script = scripts.find(s => s.id === scriptId);
     if (!script) return;
 
-    const currentUser = getCurrentUser();
     const logEntry = {
       id: Date.now().toString(),
       scriptTitle: script.title,
-      agentName: currentUser.name,
+      agentName: userProfile.full_name,
       action: "Editou conteúdo",
       timestamp: new Date().toLocaleString('pt-BR'),
       changes: `Alterou o script "${script.title}"`
@@ -412,7 +426,7 @@ const Index = () => {
             </div>
             <div className="flex items-center space-x-2">
               <Badge variant="secondary" className="text-sm">
-                Agente: {currentUser.name}
+                Agente: {userProfile.full_name}
               </Badge>
               <Button onClick={handleLogout} variant="outline" size="sm">
                 <LogOut className="w-4 h-4 mr-2" />
@@ -481,12 +495,12 @@ const Index = () => {
                           <CardDescription className="mt-1">{script.description}</CardDescription>
                           <div className="mt-2 space-y-1">
                             <Badge variant="outline" className="text-xs">
-                              Agente: {currentUser.name}
+                              Agente: {userProfile.full_name}
                             </Badge>
-                            {currentUser.role && (
+                            {userProfile.role && (
                               <div>
                                 <Badge variant="secondary" className="text-xs">
-                                  {currentUser.role}
+                                  {userProfile.role}
                                 </Badge>
                               </div>
                             )}
@@ -653,7 +667,7 @@ const Index = () => {
               <CardContent>
                 <div className="bg-muted p-4 rounded-lg">
                   <p className="text-sm text-muted-foreground mb-2">
-                    Agente: <span className="font-semibold">{currentUser.name}</span>
+                    Agente: <span className="font-semibold">{userProfile.full_name}</span>
                   </p>
                   <p className="text-2xl font-bold text-primary">
                     {protocolCount} protocolos tratados

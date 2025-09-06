@@ -87,24 +87,29 @@ function convertSupabaseToProtocol(row: any): Protocol {
 // Funções principais usando Supabase
 export async function getUsersFromStorage(): Promise<User[]> {
   try {
-    console.log('👥 Iniciando carregamento de usuários do Supabase');
+    console.log('👥 Iniciando carregamento de perfis de usuários do Supabase');
     const { data, error } = await supabase
-      .from('baseUsuario')
-      .select('*')
-      .not('Nome de usuário', 'is', null)
-      .not('Nome completo', 'is', null);
+      .from('profiles')
+      .select('*');
 
     if (error) {
-      console.error('❌ ERRO ao carregar usuários do Supabase:', error);
+      console.error('❌ ERRO ao carregar perfis do Supabase:', error);
       throw error;
     }
 
     const users = data?.map(convertSupabaseToUser) || [];
-    console.log('✅ Usuários carregados com sucesso:', users.length);
+    console.log('✅ Perfis carregados com sucesso:', data.length);
     
-    return users.length > 0 ? users : [
-      { id: "1", username: "agente", name: "João Silva", role: "N1 Callcenter", createdAt: "2024-01-15", password: "123456" }
-    ];
+    const profiles = data.map(profile => ({
+      id: profile.id?.toString() || Date.now().toString(),
+      username: profile.username || '',
+      name: profile.full_name || '',
+      password: '', // Passwords are no longer stored
+      role: profile.role || '',
+      createdAt: profile.created_at ? new Date(profile.created_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]
+    })).filter(user => user.username && user.name);
+    
+    return profiles.length > 0 ? profiles : [];
   } catch (error) {
     console.error('❌ ERRO ao carregar usuários do Supabase:', error);
     console.log('🔄 Usando fallback para localStorage');
@@ -117,38 +122,11 @@ export async function getUsersFromStorage(): Promise<User[]> {
 
 export async function saveUsersToStorage(users: User[]): Promise<void> {
   try {
-    console.log('💾 Iniciando salvamento de usuários no Supabase');
-    console.log('👥 Número de usuários a salvar:', users.length);
-    
-    // Para cada usuário, inserir ou atualizar no Supabase
-    for (const user of users) {
-      const userData = {
-        "Nome de usuário": user.username,
-        "Nome completo": user.name,
-        "Senha": user.password,
-        "Cargo": user.role,
-        data: user.createdAt
-      };
-
-      // Tentar inserir ou atualizar
-      const { error } = await supabase
-        .from('baseUsuario')
-        .upsert(userData, { 
-          onConflict: 'Nome de usuário'
-        });
-
-      if (error) {
-        console.error('❌ ERRO ao salvar usuário:', user.username, error);
-      }
-    }
-    
-    console.log('✅ Usuários salvos com sucesso no Supabase');
-    
+    console.log('💾 AVISO: Usuários agora são gerenciados via Supabase Auth');
+    console.log('⚠️ Esta função está depreciada - use Supabase Auth para criar usuários');
+    console.log('📋 Para criar usuários, use a página /auth do sistema');
   } catch (error) {
-    console.error('❌ ERRO ao salvar usuários no Supabase:', error);
-    console.log('🔄 Usando fallback para localStorage devido ao erro');
-    localStorage.setItem("system_users", JSON.stringify(users));
-    throw error;
+    console.error('❌ Erro:', error);
   }
 }
 
