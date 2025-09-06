@@ -16,7 +16,6 @@ export type Database = {
     Tables: {
       baseUsuario: {
         Row: {
-          Cargo: string | null
           Categoria: string | null
           "Conteúdo do Script": string | null
           data: string
@@ -35,14 +34,11 @@ export type Database = {
           "Link do Manual (opcional)": string | null
           Marca: string | null
           Modelo: string | null
-          "Nome completo": string | null
-          "Nome de usuário": string | null
-          Senha: string | null
           "Tags (separadas por vírgula)": string | null
           Título: string | null
+          user_id: string | null
         }
         Insert: {
-          Cargo?: string | null
           Categoria?: string | null
           "Conteúdo do Script"?: string | null
           data?: string
@@ -61,14 +57,11 @@ export type Database = {
           "Link do Manual (opcional)"?: string | null
           Marca?: string | null
           Modelo?: string | null
-          "Nome completo"?: string | null
-          "Nome de usuário"?: string | null
-          Senha?: string | null
           "Tags (separadas por vírgula)"?: string | null
           Título?: string | null
+          user_id?: string | null
         }
         Update: {
-          Cargo?: string | null
           Categoria?: string | null
           "Conteúdo do Script"?: string | null
           data?: string
@@ -87,11 +80,39 @@ export type Database = {
           "Link do Manual (opcional)"?: string | null
           Marca?: string | null
           Modelo?: string | null
-          "Nome completo"?: string | null
-          "Nome de usuário"?: string | null
-          Senha?: string | null
           "Tags (separadas por vírgula)"?: string | null
           Título?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string | null
+          full_name: string
+          id: string
+          role: string
+          updated_at: string | null
+          user_id: string
+          username: string
+        }
+        Insert: {
+          created_at?: string | null
+          full_name: string
+          id?: string
+          role?: string
+          updated_at?: string | null
+          user_id: string
+          username: string
+        }
+        Update: {
+          created_at?: string | null
+          full_name?: string
+          id?: string
+          role?: string
+          updated_at?: string | null
+          user_id?: string
+          username?: string
         }
         Relationships: []
       }
