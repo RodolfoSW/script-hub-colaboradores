@@ -180,8 +180,19 @@ const Index = () => {
   const { toast } = useToast();
   const { user, loading, signOut } = useAuth();
   
-  // Estado para profile do usuário
+  // TODOS OS ESTADOS - devem vir antes de qualquer retorno condicional
   const [userProfile, setUserProfile] = useState<any>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState<"all" | "support" | "financial" | "other">("all");
+  const [editingScript, setEditingScript] = useState<string | null>(null);
+  const [scripts, setScripts] = useState<Script[]>([]);
+  const [onuModels, setOnuModels] = useState<OnuModel[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [protocolCount, setProtocolCount] = useState(0);
+  const [scriptContents, setScriptContents] = useState<Record<string, string>>({});
+  const [protocolNumber, setProtocolNumber] = useState("");
+
+  // TODOS OS EFFECTS - devem vir antes de qualquer retorno condicional
   
   // Redirecionar para auth se não estiver autenticado
   useEffect(() => {
@@ -207,30 +218,7 @@ const Index = () => {
       loadUserProfile();
     }
   }, [user]);
-  
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState<"all" | "support" | "financial" | "other">("all");
-  const [editingScript, setEditingScript] = useState<string | null>(null);
-  const [scripts, setScripts] = useState<Script[]>([]);
-  const [onuModels, setOnuModels] = useState<OnuModel[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [protocolCount, setProtocolCount] = useState(0);
 
-  // Se ainda estiver carregando ou não tiver usuário, mostrar loading
-  if (loading) {
-    return <div className="flex items-center justify-center min-h-screen">Carregando...</div>;
-  }
-
-  // Se não tiver usuário, redirecionar será feito pelo useEffect
-  if (!user) {
-    return null;
-  }
-
-  // Se não tiver perfil ainda, aguardar carregamento
-  if (!userProfile) {
-    return <div className="flex items-center justify-center min-h-screen">Carregando perfil...</div>;
-  }
-  
   // Carregar dados quando o componente montar
   useEffect(() => {
     const loadData = async () => {
@@ -258,9 +246,7 @@ const Index = () => {
       loadData();
     }
   }, [userProfile]);
-  
-  const [scriptContents, setScriptContents] = useState<Record<string, string>>({});
-  
+
   // Atualizar conteúdos dos scripts quando os scripts carregarem
   useEffect(() => {
     setScriptContents(
@@ -268,8 +254,22 @@ const Index = () => {
     );
   }, [scripts]);
 
-  // Estados para protocolos
-  const [protocolNumber, setProtocolNumber] = useState("");
+  // RETORNOS CONDICIONAIS - só depois de todos os hooks
+  
+  // Se ainda estiver carregando, mostrar loading
+  if (loading) {
+    return <div className="flex items-center justify-center min-h-screen">Carregando...</div>;
+  }
+
+  // Se não tiver usuário, redirecionar será feito pelo useEffect
+  if (!user) {
+    return null;
+  }
+
+  // Se não tiver perfil ainda, aguardar carregamento
+  if (!userProfile) {
+    return <div className="flex items-center justify-center min-h-screen">Carregando perfil...</div>;
+  }
   
   // Funções para gerenciar protocolos
   const getProtocolsFromStorage = async (): Promise<Protocol[]> => {
