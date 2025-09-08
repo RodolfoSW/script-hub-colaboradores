@@ -25,7 +25,8 @@ import {
   X,
   LogOut,
   Hash,
-  Plus
+  Plus,
+  Settings
 } from "lucide-react";
 
 interface OnuModel {
@@ -442,6 +443,16 @@ const Index = () => {
               <Badge variant="secondary" className="text-sm">
                 Agente: {userProfile.full_name}
               </Badge>
+              {userProfile.role === 'admin' && (
+                <Button 
+                  onClick={() => navigate("/admin")} 
+                  variant="outline" 
+                  size="sm"
+                >
+                  <Settings className="w-4 h-4 mr-2" />
+                  Admin
+                </Button>
+              )}
               <Button onClick={handleLogout} variant="outline" size="sm">
                 <LogOut className="w-4 h-4 mr-2" />
                 Sair

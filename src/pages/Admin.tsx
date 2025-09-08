@@ -7,6 +7,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/components/auth/AuthProvider";
+import { supabase } from "@/integrations/supabase/client";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { UserPlus, LogOut, History, User, Edit, Calendar, Trash2, Save, X, FileText, Plus, Copy, Hash, Router, Image, Link } from "lucide-react";
@@ -116,6 +118,15 @@ const convertGoogleDriveLink = (url: string): string => {
 
 
 const Admin = () => {
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const { user, loading, signOut } = useAuth();
+  
+  // Estados para profile do usuário
+  const [userProfile, setUserProfile] = useState<any>(null);
+  const [isLoadingProfile, setIsLoadingProfile] = useState(true);
+  
+  // Estados existentes
   const [newUser, setNewUser] = useState({ username: "", name: "", password: "", role: "" });
   const [users, setUsers] = useState<any[]>([]);
   const [scriptLogs, setScriptLogs] = useState<any[]>([]);
@@ -160,9 +171,57 @@ const Admin = () => {
   
   // Estados para controlar carregamento
   const [isLoading, setIsLoading] = useState(false);
-  
-  const navigate = useNavigate();
-  const { toast } = useToast();
+
+  // Verificar autenticação e carregar perfil
+  useEffect(() => {
+    const checkAuth = async () => {
+      if (loading) return;
+      
+      if (!user) {
+        navigate("/auth");
+        return;
+      }
+
+      try {
+        const { data } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('user_id', user.id)
+          .single();
+          
+        if (!data || data.role !== 'admin') {
+          toast({
+            title: "Acesso negado",
+            description: "Você não tem permissão para acessar o painel administrativo.",
+            variant: "destructive",
+          });
+          navigate("/portal");
+          return;
+        }
+        
+        setUserProfile(data);
+      } catch (error) {
+        console.error("Erro ao verificar permissões:", error);
+        navigate("/portal");
+      } finally {
+        setIsLoadingProfile(false);
+      }
+    };
+
+    checkAuth();
+  }, [user, loading, navigate, toast]);
+
+  // Se ainda estiver carregando ou não for admin, mostrar loading
+  if (loading || isLoadingProfile || !userProfile || userProfile.role !== 'admin') {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p>Verificando permissões...</p>
+        </div>
+      </div>
+    );
+  }
 
   // Função para carregar dados do Supabase
   const loadData = async () => {
@@ -259,12 +318,12 @@ const Admin = () => {
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await signOut();
     toast({
       title: "Logout realizado",
       description: "Até logo!",
     });
-    navigate("/");
   };
 
   const handleDeleteUser = async (userId: string) => {
