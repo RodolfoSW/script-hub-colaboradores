@@ -216,9 +216,19 @@ const Index = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [protocolCount, setProtocolCount] = useState(0);
 
-  // Se ainda estiver carregando ou não tiver usuário, não renderizar
-  if (loading || !user || !userProfile) {
+  // Se ainda estiver carregando ou não tiver usuário, mostrar loading
+  if (loading) {
     return <div className="flex items-center justify-center min-h-screen">Carregando...</div>;
+  }
+
+  // Se não tiver usuário, redirecionar será feito pelo useEffect
+  if (!user) {
+    return null;
+  }
+
+  // Se não tiver perfil ainda, aguardar carregamento
+  if (!userProfile) {
+    return <div className="flex items-center justify-center min-h-screen">Carregando perfil...</div>;
   }
   
   // Carregar dados quando o componente montar
@@ -232,9 +242,11 @@ const Index = () => {
         setScripts(scriptsData);
         setOnuModels(onusData);
         
-        // Carregar contagem de protocolos
-        const count = await getUserProtocolCount(userProfile.full_name);
-        setProtocolCount(count);
+        // Carregar contagem de protocolos apenas se tivermos o perfil
+        if (userProfile?.full_name) {
+          const count = await getUserProtocolCount(userProfile.full_name);
+          setProtocolCount(count);
+        }
       } catch (error) {
         console.error("Erro ao carregar dados:", error);
       } finally {
@@ -242,8 +254,10 @@ const Index = () => {
       }
     };
     
-    loadData();
-  }, []);
+    if (userProfile) {
+      loadData();
+    }
+  }, [userProfile]);
   
   const [scriptContents, setScriptContents] = useState<Record<string, string>>({});
   
