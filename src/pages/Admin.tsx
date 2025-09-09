@@ -275,41 +275,40 @@ const Admin = () => {
       return;
     }
 
-    const userExists = users.some(user => user.username === newUser.username);
-    if (userExists) {
-      toast({
-        title: "Erro",
-        description: "Usuário já existe.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const user = {
-      id: Date.now().toString(),
-      username: newUser.username,
-      name: newUser.name,
-      password: newUser.password,
-      role: newUser.role,
-      createdAt: new Date().toISOString().split('T')[0]
-    };
-
-    const updatedUsers = [...users, user];
-    setUsers(updatedUsers);
-    
     try {
-      await saveUsersToStorage(updatedUsers);
+      // Criar usuário usando edge function
+      const { data, error } = await supabase.functions.invoke('create-user', {
+        body: {
+          email: newUser.username,
+          password: newUser.password,
+          full_name: newUser.name,
+          username: newUser.username,
+          role: newUser.role
+        }
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      if (data?.error) {
+        throw new Error(data.error);
+      }
+
+      // Atualizar a lista local de usuários
+      await loadData();
+      
       setNewUser({ username: "", name: "", password: "", role: "" });
       
       toast({
         title: "Usuário criado com sucesso!",
-        description: `Agente ${newUser.name} foi adicionado ao sistema.`,
+        description: `Agente ${newUser.name} foi adicionado ao sistema e pode fazer login.`,
       });
-    } catch (error) {
-      console.error('Erro ao salvar usuário:', error);
+    } catch (error: any) {
+      console.error('Erro ao criar usuário:', error);
       toast({
-        title: "Erro ao salvar",
-        description: "Erro ao salvar no Google Sheets. Dados salvos localmente.",
+        title: "Erro ao criar usuário",
+        description: error.message || "Erro ao criar usuário no sistema de autenticação.",
         variant: "destructive",
       });
     }
