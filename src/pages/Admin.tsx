@@ -207,24 +207,8 @@ const Admin = () => {
     }
   }, [user, loading, navigate, toast]);
 
-  useEffect(() => {
-    checkAuth();
-  }, [checkAuth]);
-
-  // Se ainda estiver carregando ou não for admin, mostrar loading
-  if (loading || isLoadingProfile || !userProfile || userProfile.role !== 'admin') {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p>Verificando permissões...</p>
-        </div>
-      </div>
-    );
-  }
-
   // Função para carregar dados do Supabase
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setIsLoading(true);
     try {
       const [usersData, scriptsData, onusData, logsData] = await Promise.all([
@@ -239,32 +223,45 @@ const Admin = () => {
       setOnus(onusData);
       setScriptLogs(logsData);
     } catch (error) {
-      console.error('Erro ao carregar dados:', error);
-      toast({
-        title: "Erro ao carregar dados",
-        description: "Usando dados locais como fallback.",
-        variant: "destructive",
-      });
-      
-      // Fallback para localStorage
-      const localUsers = localStorage.getItem("system_users");
-      const localScripts = localStorage.getItem("system_scripts");
-      const localOnus = localStorage.getItem("system_onus");
+      console.error("Erro ao carregar dados:", error);
+      // Fallback para dados locais se falhar
+      const localUsers = localStorage.getItem("admin_users");
+      const localScripts = localStorage.getItem("admin_scripts");
+      const localOnus = localStorage.getItem("admin_onus");
       const localLogs = localStorage.getItem("script_logs");
       
-      setUsers(localUsers ? JSON.parse(localUsers) : [{ id: "1", username: "agente", name: "João Silva", role: "N1 Callcenter", createdAt: "2024-01-15", password: "123456" }]);
+      setUsers(localUsers ? JSON.parse(localUsers) : []);
       setScripts(localScripts ? JSON.parse(localScripts) : defaultScripts);
       setOnus(localOnus ? JSON.parse(localOnus) : []);
       setScriptLogs(localLogs ? JSON.parse(localLogs) : []);
     } finally {
       setIsLoading(false);
     }
-  };
-
-  // Carregar dados quando o componente for montado
-  useEffect(() => {
-    loadData();
   }, []);
+
+  useEffect(() => {
+    checkAuth();
+  }, [checkAuth]);
+
+  // Carregar dados quando o componente for montado - only after auth is verified
+  useEffect(() => {
+    if (!loading && userProfile && userProfile.role === 'admin') {
+      loadData();
+    }
+  }, [userProfile, loading, loadData]);
+
+  // Se ainda estiver carregando ou não for admin, mostrar loading
+  if (loading || isLoadingProfile || !userProfile || userProfile.role !== 'admin') {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p>Verificando permissões...</p>
+        </div>
+      </div>
+    );
+  }
+
 
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
