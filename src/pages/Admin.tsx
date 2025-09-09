@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -173,43 +173,43 @@ const Admin = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   // Verificar autenticação e carregar perfil
-  useEffect(() => {
-    const checkAuth = async () => {
-      if (loading) return;
-      
-      if (!user) {
-        navigate("/auth");
+  const checkAuth = useCallback(async () => {
+    if (loading) return;
+    
+    if (!user) {
+      navigate("/auth");
+      return;
+    }
+
+    try {
+      const { data } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+        
+      if (!data || data.role !== 'admin') {
+        toast({
+          title: "Acesso negado",
+          description: "Você não tem permissão para acessar o painel administrativo.",
+          variant: "destructive",
+        });
+        navigate("/portal");
         return;
       }
-
-      try {
-        const { data } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('user_id', user.id)
-          .single();
-          
-        if (!data || data.role !== 'admin') {
-          toast({
-            title: "Acesso negado",
-            description: "Você não tem permissão para acessar o painel administrativo.",
-            variant: "destructive",
-          });
-          navigate("/portal");
-          return;
-        }
-        
-        setUserProfile(data);
-      } catch (error) {
-        console.error("Erro ao verificar permissões:", error);
-        navigate("/portal");
-      } finally {
-        setIsLoadingProfile(false);
-      }
-    };
-
-    checkAuth();
+      
+      setUserProfile(data);
+    } catch (error) {
+      console.error("Erro ao verificar permissões:", error);
+      navigate("/portal");
+    } finally {
+      setIsLoadingProfile(false);
+    }
   }, [user, loading, navigate, toast]);
+
+  useEffect(() => {
+    checkAuth();
+  }, [checkAuth]);
 
   // Se ainda estiver carregando ou não for admin, mostrar loading
   if (loading || isLoadingProfile || !userProfile || userProfile.role !== 'admin') {
