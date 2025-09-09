@@ -275,6 +275,17 @@ const Admin = () => {
       return;
     }
 
+    // Validar formato de email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(newUser.username)) {
+      toast({
+        title: "Erro",
+        description: "Por favor, insira um email válido.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       // Criar usuário usando edge function
       const { data, error } = await supabase.functions.invoke('create-user', {
@@ -727,12 +738,13 @@ const Admin = () => {
                 <form onSubmit={handleCreateUser} className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="username">Nome de usuário</Label>
+                      <Label htmlFor="email">Email</Label>
                       <Input
-                        id="username"
+                        id="email"
+                        type="email"
                         value={newUser.username}
                         onChange={(e) => setNewUser({ ...newUser, username: e.target.value })}
-                        placeholder="ex: agente3"
+                        placeholder="ex: agente@email.com"
                       />
                     </div>
                     <div className="space-y-2">
@@ -790,12 +802,13 @@ const Admin = () => {
                         <div className="space-y-4">
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
-                              <Label htmlFor={`edit-username-${user.id}`}>Nome de usuário</Label>
+                              <Label htmlFor={`edit-email-${user.id}`}>Email</Label>
                               <Input
-                                id={`edit-username-${user.id}`}
+                                id={`edit-email-${user.id}`}
+                                type="email"
                                 value={editUser.username}
                                 onChange={(e) => setEditUser({ ...editUser, username: e.target.value })}
-                                placeholder="ex: agente3"
+                                placeholder="ex: agente@email.com"
                               />
                             </div>
                             <div className="space-y-2">
@@ -852,7 +865,7 @@ const Admin = () => {
                         <div className="flex items-center justify-between">
                           <div className="space-y-1">
                             <div className="font-medium">{user.name}</div>
-                            <div className="text-sm text-muted-foreground">@{user.username}</div>
+                            <div className="text-sm text-muted-foreground">{user.username}</div>
                           </div>
                           <div className="flex items-center gap-3">
                             <div className="text-right">
